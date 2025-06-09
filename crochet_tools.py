@@ -98,16 +98,7 @@ def select_file():
     filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png *.jpeg")])
     if filepath:
         image_lvl0 = Image.open(filepath).convert("RGB")
-        # Display original image
-        display_image_lvl0 = resize_for_display(image_lvl0)
-        image_lvl0_img_tk = ImageTk.PhotoImage(display_image_lvl0)
-        image_lvl0_image_label.configure(image=image_lvl0_img_tk)
-        image_lvl0_image_label.image = image_lvl0_img_tk
-        
-        image_lvl1 = image_lvl0.copy()
-        image_lvl2 = image_lvl0.copy()
-        image_lvl3 = image_lvl0.copy()
-
+        update_image_display(image_lvl0, image_lvl0_image_label)
         update_all_levels()
 
 def reset_sliders():
