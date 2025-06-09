@@ -1,6 +1,23 @@
 import customtkinter as ctk
 from tkinter import filedialog
 from PIL import Image, ImageTk, ImageEnhance
+from tkinter import messagebox
+
+
+# ---------- Global variables ----------
+
+# Aesthetics
+error_box_header = "Error"
+window_width = 30
+window_title = "Pattern Image Editor"
+color_base = "#217346"
+
+# Functionality
+csv_output_directory = "input_output"
+max_color_input = 32
+min_color_input = 1
+max_dimension_input = 500
+min_dimension_input = 1
 
 # ---------- Setup ----------
 ctk.set_appearance_mode("dark")
@@ -19,7 +36,6 @@ img_tk = None     # For keeping reference to displayed image
 image_frame = ctk.CTkFrame(app)
 image_frame.pack(pady=10)
 
-# Create fixed-size frames for images
 original_frame = ctk.CTkFrame(image_frame, width=500, height=500)
 original_frame.grid(row=1, column=0, padx=10)
 original_frame.grid_propagate(False)  # Prevent frame from shrinking
@@ -138,48 +154,49 @@ def reset_sliders():
 # I think we should have image processing happening here, and then the "processed" image shows the rgb grid we have, possibly scaled up for visibility
 # this will happen once the "update" button is pressed
 # to do
+    # we need a function that converts rgb grid to an image that tkinter can display, for purposes of showing in the UI
     # have the 'processed image' panel display from the rgb color grid output by this function
     # call this function in apply_settings()
 
 def process_image(width, height, num_colors):
     # Check inputs for errors
-    # if not file_path_valid(file_path):
-    # 	return None, None
-    # if not dimensions_valid(width, height):
-    # 	return None, None
-    # if not num_colors_valid(num_colors):
-    # 	return None, None
+    if not dimensions_valid(width, height):
+        return None, None
+    if not num_colors_valid(num_colors):
+        return None, None
 
-    ## Init
+    # Init
     width = int(width)
     height = int(height)
     num_colors = int(num_colors)
        
     # create copy of original image
     image = original.copy()
-
     # pixelate image (resize)
-    image_pixelated = image.resize((width, height))
-
-    # todo: trim transparent border
-
+    image = pixelate_image(image, width, height)
     # quantize (reduce color palette)
-    if num_colors <= 32:
-        pixel_image = image_pixelated.convert("P", palette=Image.ADAPTIVE, colors=num_colors, dither=0).convert("RGB")
-
+    image = quantize_image(image, num_colors)
     # convert to rgb color grid
     colors, color_map = convert_image_to_rgb_grid(image)
     # if use_dmc:
     # 	colors = convert_colors_to_dmc(colors, color_map, num_colors)
 
-    ## Close
-    image.close()
-
     return colors, color_map
+
+def pixelate_image(image, width, height):
+    image_pixelated = image.resize((width, height))
+    return image_pixelated
+
+def quantize_image(image, num_colors):
+    if num_colors <= 32:
+        quantized_image = image.convert("P", palette=Image.ADAPTIVE, colors=num_colors, dither=0).convert("RGB")
+    return quantized_image
 
 # IN: PIL image
 # OUT: 2D array with each value containing a rgb tuple
 # OUT: 2D array with each value containing an int representing the color map value
+# Notes: this takes each pixel and turns it to an rgb tuple
+#   we want to reduce the size of the image so that we have one pixel per what we want to be a pixel in this grid
 def convert_image_to_rgb_grid(image):
 	used_colors = []
 	colors = []
@@ -200,6 +217,59 @@ def convert_image_to_rgb_grid(image):
 		color_map.append(column_map)
 
 	return colors, color_map
+
+def dimensions_valid(width, height):
+	## Check if height and width are numbers
+	if not width.isnumeric():
+		print("Error: Width contains non-numeric characters.")
+		messagebox.showinfo(error_box_header, "Error: Width contains non-numeric characters.")
+		return False
+	if not height.isnumeric():
+		print("Error: Height contains non-numeric characters.")
+		messagebox.showinfo(error_box_header, "Error: Height contains non-numeric characters.")
+		return False
+	## Check if height in width are within the desired range
+	width = int(width)
+	height = int(height)
+	if width < min_dimension_input or width > max_dimension_input:
+		print("Error: Width '" + str(width) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
+		messagebox.showinfo(error_box_header, "Error: Width '" + str(width) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
+		return False
+	if height < min_dimension_input or height > max_dimension_input:
+		print("Error: Height '" + str(height) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
+		messagebox.showinfo(error_box_header, "Error: Height '" + str(height) + "' not valid. Must be " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
+		return False
+	return True
+
+def num_colors_valid(num_colors):
+	## Check if number is numeric
+	if not num_colors.isnumeric():
+		print("Error: Number of Colors contains non-numeric characters.")
+		messagebox.showinfo(error_box_header, "Error: Number of Colors contains non-numeric characters.")
+		return False
+	## Check if in desired range
+	num_colors = int(num_colors)
+	if num_colors < min_color_input or num_colors > max_color_input:
+		print("Error: Number of Colors '" + str(num_colors) + "' not valid. Must be between "  + str(min_color_input) + " and " + str(max_color_input))
+		messagebox.showinfo(error_box_header, "Error: Number of Colors '" + str(num_colors) + "' not valid. Must be between "  + str(min_color_input) + " and " + str(max_color_input))
+		return False
+	return True
+
+def file_path_valid(file_path):
+	## Check for empty path
+	if file_path == "":
+		print("Error: Path file path empty.")
+		messagebox.showinfo(error_box_header, "Error: Path file path empty.")
+		return False
+	## Check file type
+	file_extension = file_path[-5:].lower()
+	if  ".jpg" not in file_extension.lower() and \
+		".png" not in file_extension.lower() and \
+		".jpeg" not in file_extension.lower() :
+		print("Error: File must be type '.png' or '.jpg'")
+		messagebox.showinfo(error_box_header, "Error: File must be type '.png' or '.jpg'")
+		return False
+	return True
 
 # ---------- Buttons ----------
 reset_button = ctk.CTkButton(app, text="Reset Sliders", command=reset_sliders)
@@ -254,3 +324,26 @@ checkbox.pack()
 app.mainloop()
 
 
+
+'''
+
+globally store
+    - original image
+    - image lvl1
+    - image lvl2
+    - image lvl3
+    - image lvl4
+
+functions
+    - process from lvl1 to lvl2
+    - process from lvl2 to lvl3
+    - process from lvl3 to lvl4
+    - update all levels
+
+- when file is loaded, run the "update all levels" function
+- when any button is pressed or value is updated, run "update all levels" function. lets have it run this way until performance tanks lol
+
+
+
+
+'''
