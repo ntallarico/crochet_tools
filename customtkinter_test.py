@@ -65,13 +65,20 @@ def apply_settings():
         print("Invalid width/height/colors")
         return
 
-    # Resize and (optionally) quantize
-    img = original.copy().resize((width, height))
+    # create copy of original image
+    image = original.copy()
 
-    if num_colors < 256:
-        img = img.convert("P", palette=Image.ADAPTIVE, colors=num_colors).convert("RGB")
+    # resize
+    image_pixelated = image.resize((width, height))
 
-    processed_image = img
+    # quantize
+    if num_colors <= 32:
+        pixel_image = image_pixelated.convert("P", palette=Image.ADAPTIVE, colors=num_colors, dither=0).convert("RGB")
+
+    # update global processed_image var to new processed image
+    processed_image = pixel_image
+
+    # apply live filters like sliders
     apply_live_filters()
 
 def resize_for_display(img, max_size=500):
@@ -124,6 +131,76 @@ def reset_sliders():
     saturation_slider.set(slider_defaults["saturation"])
     apply_live_filters()
 
+
+
+# plan
+# currently, we have image processing happening in the apply_settings function.
+# I think we should have image processing happening here, and then the "processed" image shows the rgb grid we have, possibly scaled up for visibility
+# this will happen once the "update" button is pressed
+# to do
+    # have the 'processed image' panel display from the rgb color grid output by this function
+    # call this function in apply_settings()
+
+def process_image(width, height, num_colors):
+    # Check inputs for errors
+    # if not file_path_valid(file_path):
+    # 	return None, None
+    # if not dimensions_valid(width, height):
+    # 	return None, None
+    # if not num_colors_valid(num_colors):
+    # 	return None, None
+
+    ## Init
+    width = int(width)
+    height = int(height)
+    num_colors = int(num_colors)
+       
+    # create copy of original image
+    image = original.copy()
+
+    # pixelate image (resize)
+    image_pixelated = image.resize((width, height))
+
+    # todo: trim transparent border
+
+    # quantize (reduce color palette)
+    if num_colors <= 32:
+        pixel_image = image_pixelated.convert("P", palette=Image.ADAPTIVE, colors=num_colors, dither=0).convert("RGB")
+
+    # convert to rgb color grid
+    colors, color_map = convert_image_to_rgb_grid(image)
+    # if use_dmc:
+    # 	colors = convert_colors_to_dmc(colors, color_map, num_colors)
+
+    ## Close
+    image.close()
+
+    return colors, color_map
+
+# IN: PIL image
+# OUT: 2D array with each value containing a rgb tuple
+# OUT: 2D array with each value containing an int representing the color map value
+def convert_image_to_rgb_grid(image):
+	used_colors = []
+	colors = []
+	color_map = []
+
+	for x in range(0, image.size[0]): # Left column to right column
+		column_colors = []
+		column_map = []
+		for y in range(0, image.size[1]): # Top row to bottom row
+			pixel_color = image.getpixel((x,y))
+			if(pixel_color not in used_colors):
+				used_colors.append(pixel_color)
+			pixel_map = used_colors.index(pixel_color)
+
+			column_colors.append(pixel_color)
+			column_map.append(pixel_map)
+		colors.append(column_colors)
+		color_map.append(column_map)
+
+	return colors, color_map
+
 # ---------- Buttons ----------
 reset_button = ctk.CTkButton(app, text="Reset Sliders", command=reset_sliders)
 reset_button.pack(pady=5)
@@ -170,7 +247,7 @@ colors_entry = create_entry("Number of Colors", "3", 2)
 
 # ---------- Checkbox ----------
 include_cells_var = ctk.BooleanVar()
-checkbox = ctk.CTkCheckBox(app, text="Include Cell Numbers?", variable=include_cells_var, command=lambda: apply_live_filters())
+checkbox = ctk.CTkCheckBox(app, text="Include cell numbers", variable=include_cells_var, command=lambda: apply_live_filters())
 checkbox.pack()
 
 # ---------- Launch ----------
