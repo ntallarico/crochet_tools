@@ -53,6 +53,11 @@ image_lvl3 = None
 
 
 
+
+
+
+
+
 # ---------- Functions ----------
 
 def resize_for_display(image, max_size=500):
@@ -67,10 +72,11 @@ def select_file():
     filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png *.jpeg")])
     if filepath:
         image_lvl0 = Image.open(filepath).convert("RGB")
-        update_image_display(image_lvl0, image_lvl0_image_label)
+        update_image_display(image_lvl0, image_lvl0_label)
         update_all_levels()
 
 def reset_sliders():
+    if image_lvl0 == None: return
     brightness_slider.set(slider_defaults["brightness"])
     contrast_slider.set(slider_defaults["contrast"])
     saturation_slider.set(slider_defaults["saturation"])
@@ -163,33 +169,6 @@ def quantize_image(image, num_colors):
         quantized_image = image.convert("P", palette=Image.ADAPTIVE, colors=num_colors, dither=0).convert("RGB")
     return quantized_image
 
-# IN: PIL image
-# OUT: 2D array with each value containing a rgb tuple
-# OUT: 2D array with each value containing an int representing the color map value
-# Notes: this takes each pixel and turns it to an rgb tuple
-#   we want to reduce the size of the image so that we have one pixel per what we want to be a pixel in this grid
-def convert_image_to_rgb_grid(image):
-    if image == None: return
-    used_colors = []
-    colors = []
-    color_map = []
-
-    for x in range(0, image.size[0]): # Left column to right column
-        column_colors = []
-        column_map = []
-        for y in range(0, image.size[1]): # Top row to bottom row
-            pixel_color = image.getpixel((x,y))
-            if(pixel_color not in used_colors):
-                used_colors.append(pixel_color)
-            pixel_map = used_colors.index(pixel_color)
-
-            column_colors.append(pixel_color)
-            column_map.append(pixel_map)
-        colors.append(column_colors)
-        color_map.append(column_map)
-
-    return colors, color_map
-
 def dimensions_valid(width, height):
 	## Check if height and width are numbers
 	if not width.isnumeric():
@@ -227,11 +206,9 @@ def num_colors_valid(num_colors):
 		return False
 	return True
 
-#############################################
 # IN: PIL image
 # OUT: 2D array with each value containing a rgb tuple
 # OUT: 2D array with each value containing an int representing the color map value
-#############################################
 def get_colors(image):
 	used_colors = []
 	colors = []
@@ -322,28 +299,30 @@ def save_wb(wb, output_file_path):
 def get_file_name_from_path(file_path):
 	return file_path.split("/")[-1]
 
-def export_image_as_excel_pattern(include_pixel_numbers = False):
-	column_size = 2.8 # This number is about 20 pixels, same as the default height
+def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = False):
+	column_size = 2.8 # this number is about 20 pixels, same as the default height
 	cell_fill_type = 'solid'
 	legend_buffer = 1
 	output_file_name = "output"
 
-    # get color grid and map from final image
-	colors, color_map = get_colors(image_lvl3)
+	image_to_export = image_lvl3
 
-	## Create worksheet
+	if image_to_export == None: return
+
+    # get color grid and map from final image
+	colors, color_map = get_colors(image_to_export)
+
+	# create worksheet
 	wb = Workbook()
 	ws = wb.create_sheet(output_file_name, index=0)
 
-	## Fill worksheet with image
-	#fill_type = 'solid'
+	# fill worksheet with image
 	for x in range(0, len(colors)):
 		print("Converting - " +  str(x) + "/" + str(len(colors)) + " to Excel")
 		#set_progress(x + 1, len(colors))
 		for y in range(0, len(colors[x])):
 			cell_color = rgb_to_hex(colors[x][y])
 			font_color = get_font_color(colors[x][y])
-			#font_color = "FFFFFFFF" # White
 			cell_symbol = color_map[x][y]
 			cell_alignment = styles.Alignment(horizontal='center')
 			cell_fill = styles.PatternFill(fill_type=cell_fill_type, start_color=cell_color, end_color=cell_color)
@@ -355,21 +334,15 @@ def export_image_as_excel_pattern(include_pixel_numbers = False):
 			ws[cell_name].fill = cell_fill
 			ws[cell_name].border = cell_border
 			ws[cell_name].font = cell_font
-		ws.column_dimensions[get_column(x + 1)].width = column_size # Set column size
+		ws.column_dimensions[get_column(x + 1)].width = column_size # set column size
 	print("Conversion complete")
 
-	## Add legend
+	# add legend
 	used_colors, used_map = get_used_color_palette(colors, color_map)
-	#width = len(colors[0])
 	width = len(colors)
 	for c in range(-1, len(used_colors)):
 		if(c == -1):
 			ws[get_cell_name(width + legend_buffer, 0)].value = "Color"
-			#ws[get_cell_name(width + legend_buffer + 1, 0)].value = "DMC Name"			
-			#ws[get_cell_name(width + legend_buffer + 2, 0)].value = "HEX"
-			#ws[get_cell_name(width + legend_buffer + 3, 0)].value = "Red Value"
-			#ws[get_cell_name(width + legend_buffer + 4, 0)].value = "Green Value"
-			#ws[get_cell_name(width + legend_buffer + 5, 0)].value = "Blue Value"
 			ws[get_cell_name(width + legend_buffer + 1, 0)].value = "HEX"
 			ws[get_cell_name(width + legend_buffer + 2, 0)].value = "Red Value"
 			ws[get_cell_name(width + legend_buffer + 3, 0)].value = "Green Value"
@@ -383,17 +356,12 @@ def export_image_as_excel_pattern(include_pixel_numbers = False):
 		ws[get_cell_name(width + legend_buffer, c + 1)].fill = styles.PatternFill(fill_type=cell_fill_type, start_color=color_hex, end_color=color_hex)
 		if include_pixel_numbers: ws[get_cell_name(width + legend_buffer, c + 1)].value = str(color_symbol)
 		ws[get_cell_name(width + legend_buffer, c + 1)].font = cell_font
-		#ws[get_cell_name(width + legend_buffer + 1, c + 1)].value = get_dmc_name(use_dmc, color_rgb)
-		#ws[get_cell_name(width + legend_buffer + 2, c + 1)].value = str(color_hex)
-		#ws[get_cell_name(width + legend_buffer + 3, c + 1)].value = str(color_rgb[0])
-		#ws[get_cell_name(width + legend_buffer + 4, c + 1)].value = str(color_rgb[1])
-		#ws[get_cell_name(width + legend_buffer + 5, c + 1)].value = str(color_rgb[2])
 		ws[get_cell_name(width + legend_buffer + 1, c + 1)].value = str(color_hex)
 		ws[get_cell_name(width + legend_buffer + 2, c + 1)].value = str(color_rgb[0])
 		ws[get_cell_name(width + legend_buffer + 3, c + 1)].value = str(color_rgb[1])
 		ws[get_cell_name(width + legend_buffer + 4, c + 1)].value = str(color_rgb[2])
 
-	## Save the file
+	# save the file
 	check_output_directory()
 	output_directory = csv_output_directory
 	output_file_path = output_directory + "\\" + output_file_name + ".xlsx"
@@ -448,8 +416,8 @@ image_lvl0_frame.grid_propagate(False)
 image_lvl0_label = ctk.CTkLabel(image_frame, text="Original")
 image_lvl0_label.grid(row=0, column=0, padx=10)
 # image_lvl0 (original) image label
-image_lvl0_image_label = ctk.CTkLabel(image_lvl0_frame, text="")
-image_lvl0_image_label.place(relx=0.5, rely=0.5, anchor="center")
+image_lvl0_label = ctk.CTkLabel(image_lvl0_frame, text="")
+image_lvl0_label.place(relx=0.5, rely=0.5, anchor="center")
 
 # image_lvl1 frame for image
 image_lvl1_frame = ctk.CTkFrame(image_frame, width=500, height=500)
@@ -484,7 +452,7 @@ update_button.pack(pady=5)
 file_button = ctk.CTkButton(app, text="Select Image File", command = lambda: select_file())
 file_button.pack(pady=5)
 
-export_image_as_pattern_button = ctk.CTkButton(app, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern())
+export_image_as_pattern_button = ctk.CTkButton(app, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = include_cells_var.get()))
 export_image_as_pattern_button.pack(pady=5)
 
 # ---------- Sliders ----------
@@ -528,7 +496,7 @@ colors_entry = create_entry("Number of Colors", "3", 2)
 # ---------- Checkbox ----------
 
 include_cells_var = ctk.BooleanVar()
-checkbox = ctk.CTkCheckBox(app, text="Include cell numbers", variable=include_cells_var, command = lambda: update_all_levels())
+checkbox = ctk.CTkCheckBox(app, text="Include cell numbers", variable=include_cells_var) #, command = lambda: update_all_levels()
 checkbox.pack()
 
 # ---------- Launch ----------
