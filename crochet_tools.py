@@ -18,10 +18,15 @@ SOFTWARE.
 
 # ---------- Import Libraries ----------
 
+from os import path, mkdir
 import customtkinter as ctk
 from tkinter import filedialog
 from PIL import Image, ImageTk, ImageEnhance
 from tkinter import messagebox
+from openpyxl import styles
+from openpyxl import Workbook
+from openpyxl import load_workbook
+from string import ascii_uppercase
 
 # ---------- Global Variables ----------
 
@@ -48,43 +53,7 @@ image_lvl3 = None
 
 
 
-
-
-
-
-
 # ---------- Functions ----------
-
-# def apply_settings():
-#     global image_lvl1
-#     if image_lvl0 is None:
-#         return
-
-#     try:
-#         width = int(width_entry.get())
-#         height = int(height_entry.get())
-#         num_colors = int(colors_entry.get())
-#     except ValueError:
-#         print("Invalid width/height/colors")
-#         return
-
-#     # create copy of original image
-#     image = image_lvl0.copy()
-
-#     # resize
-#     image_pixelated = image.resize((width, height))
-
-#     # quantize
-#     if num_colors <= 32:
-#         pixel_image = image_pixelated.convert("P", palette=Image.ADAPTIVE, colors=num_colors, dither=0).convert("RGB")
-
-#     # update global image_lvl1 var to new processed image
-#     image_lvl1 = pixel_image
-
-#     # apply live filters like sliders
-#     apply_color_sliders()
-
-
 
 def resize_for_display(image, max_size=500):
     if image == None: return
@@ -258,11 +227,185 @@ def num_colors_valid(num_colors):
 		return False
 	return True
 
+#############################################
+# IN: PIL image
+# OUT: 2D array with each value containing a rgb tuple
+# OUT: 2D array with each value containing an int representing the color map value
+#############################################
+def get_colors(image):
+	used_colors = []
+	colors = []
+	color_map = []
 
+	for x in range(0, image.size[0]): # Left column to right column
+		column_colors = []
+		column_map = []
+		for y in range(0, image.size[1]): # Top row to bottom row
+			pixel_color = image.getpixel((x,y))
+			if(pixel_color not in used_colors):
+				used_colors.append(pixel_color)
+			pixel_map = used_colors.index(pixel_color)
 
+			column_colors.append(pixel_color)
+			column_map.append(pixel_map)
+		colors.append(column_colors)
+		color_map.append(column_map)
 
+	return colors, color_map
 
+def get_font_color(cell_color):
+	r = cell_color[0]
+	g = cell_color[1]
+	b = cell_color[2]
+	luma = 0.299*r + 0.587*g + 0.114*b
+	luma = luma / 255.0 # Account for rgb scale being 0-255 instead of 0-1.0
+	if luma > 0.7: # Cell is very bright
+		return "00000000" # Black
+	else: # Cell is very dark
+		return "FFFFFFFF" # White
+      
+def rgb_to_hex(color):
+	# Note: Have color[3] for alpha for future expansion.
+	return '%02x%02x%02x' % (color[0], color[1], color[2])
 
+def get_cell_name(x, y):
+	col = get_column(x + 1)
+	row = get_row(y)
+
+	return col + row
+
+def get_column(num):
+	def divmod_excel(n):
+		a, b = divmod(n, 26)
+		if b == 0:
+			return a - 1, b + 26
+		return a, b
+
+	chars = []
+	while num > 0:
+		num, d = divmod_excel(num)
+		chars.append(ascii_uppercase[d - 1])
+	return ''.join(reversed(chars)).upper()
+
+def get_row(y):
+	return str(y + 1)
+
+def get_used_color_palette(colors, color_map):
+	used_colors = []
+	used_map = []
+
+	## Get list of used colors
+	for x in range(0, len(colors)):
+		for y in range(0, len(colors[x])):
+			color = colors[x][y]
+			color_map_value = color_map[x][y]
+			if color not in used_colors:
+				used_colors.append(color)
+				used_map.append(color_map_value)
+
+	return used_colors, used_map
+
+def check_output_directory():
+	if not path.isdir(csv_output_directory):
+		mkdir(csv_output_directory)
+
+# DESC: Save the workbook as an excel file
+# IN: workbook, file path
+# OUT: boolean indicating success
+def save_wb(wb, output_file_path):
+	try:
+		wb.save(output_file_path)
+		return True
+	except Exception as e:
+		return False
+	
+def get_file_name_from_path(file_path):
+	return file_path.split("/")[-1]
+
+def export_image_as_excel_pattern(include_pixel_numbers = False):
+	column_size = 2.8 # This number is about 20 pixels, same as the default height
+	cell_fill_type = 'solid'
+	legend_buffer = 1
+	output_file_name = "output"
+
+    # get color grid and map from final image
+	colors, color_map = get_colors(image_lvl3)
+
+	## Create worksheet
+	wb = Workbook()
+	ws = wb.create_sheet(output_file_name, index=0)
+
+	## Fill worksheet with image
+	#fill_type = 'solid'
+	for x in range(0, len(colors)):
+		print("Converting - " +  str(x) + "/" + str(len(colors)) + " to Excel")
+		#set_progress(x + 1, len(colors))
+		for y in range(0, len(colors[x])):
+			cell_color = rgb_to_hex(colors[x][y])
+			font_color = get_font_color(colors[x][y])
+			#font_color = "FFFFFFFF" # White
+			cell_symbol = color_map[x][y]
+			cell_alignment = styles.Alignment(horizontal='center')
+			cell_fill = styles.PatternFill(fill_type=cell_fill_type, start_color=cell_color, end_color=cell_color)
+			cell_border = styles.Border(left=styles.Side(style='thin'), right=styles.Side(style='thin'), top=styles.Side(style='thin'), bottom=styles.Side(style='thin'))
+			cell_font = styles.Font(name='Calibri', bold=False, italic=False, color=font_color)
+			cell_name = get_cell_name(x, y)
+			ws[cell_name].alignment  = cell_alignment
+			if include_pixel_numbers: ws[cell_name].value = cell_symbol
+			ws[cell_name].fill = cell_fill
+			ws[cell_name].border = cell_border
+			ws[cell_name].font = cell_font
+		ws.column_dimensions[get_column(x + 1)].width = column_size # Set column size
+	print("Conversion complete")
+
+	## Add legend
+	used_colors, used_map = get_used_color_palette(colors, color_map)
+	#width = len(colors[0])
+	width = len(colors)
+	for c in range(-1, len(used_colors)):
+		if(c == -1):
+			ws[get_cell_name(width + legend_buffer, 0)].value = "Color"
+			#ws[get_cell_name(width + legend_buffer + 1, 0)].value = "DMC Name"			
+			#ws[get_cell_name(width + legend_buffer + 2, 0)].value = "HEX"
+			#ws[get_cell_name(width + legend_buffer + 3, 0)].value = "Red Value"
+			#ws[get_cell_name(width + legend_buffer + 4, 0)].value = "Green Value"
+			#ws[get_cell_name(width + legend_buffer + 5, 0)].value = "Blue Value"
+			ws[get_cell_name(width + legend_buffer + 1, 0)].value = "HEX"
+			ws[get_cell_name(width + legend_buffer + 2, 0)].value = "Red Value"
+			ws[get_cell_name(width + legend_buffer + 3, 0)].value = "Green Value"
+			ws[get_cell_name(width + legend_buffer + 4, 0)].value = "Blue Value"
+			continue		
+		color_rgb = used_colors[c]
+		color_symbol = used_map[c]
+		color_hex = rgb_to_hex(color_rgb)
+		font_color = get_font_color(color_rgb)
+		cell_font = styles.Font(color=font_color)
+		ws[get_cell_name(width + legend_buffer, c + 1)].fill = styles.PatternFill(fill_type=cell_fill_type, start_color=color_hex, end_color=color_hex)
+		if include_pixel_numbers: ws[get_cell_name(width + legend_buffer, c + 1)].value = str(color_symbol)
+		ws[get_cell_name(width + legend_buffer, c + 1)].font = cell_font
+		#ws[get_cell_name(width + legend_buffer + 1, c + 1)].value = get_dmc_name(use_dmc, color_rgb)
+		#ws[get_cell_name(width + legend_buffer + 2, c + 1)].value = str(color_hex)
+		#ws[get_cell_name(width + legend_buffer + 3, c + 1)].value = str(color_rgb[0])
+		#ws[get_cell_name(width + legend_buffer + 4, c + 1)].value = str(color_rgb[1])
+		#ws[get_cell_name(width + legend_buffer + 5, c + 1)].value = str(color_rgb[2])
+		ws[get_cell_name(width + legend_buffer + 1, c + 1)].value = str(color_hex)
+		ws[get_cell_name(width + legend_buffer + 2, c + 1)].value = str(color_rgb[0])
+		ws[get_cell_name(width + legend_buffer + 3, c + 1)].value = str(color_rgb[1])
+		ws[get_cell_name(width + legend_buffer + 4, c + 1)].value = str(color_rgb[2])
+
+	## Save the file
+	check_output_directory()
+	output_directory = csv_output_directory
+	output_file_path = output_directory + "\\" + output_file_name + ".xlsx"
+	save_success = save_wb(wb, output_file_path)
+	if save_success:
+		print(output_file_name + " created")
+		messagebox.showinfo("Success", output_file_name + " created in folder '" + output_directory + "'")
+	else:
+		print(output_file_name + " save failed")
+		messagebox.showinfo(error_box_header, "Error: Save failed. Make sure file '" + get_file_name_from_path(output_file_name) + "' is not already open on computer.")
+	#set_progress(0, 1)
+	#enable_gui_buttons()
 
 
 
@@ -341,6 +484,9 @@ update_button.pack(pady=5)
 file_button = ctk.CTkButton(app, text="Select Image File", command = lambda: select_file())
 file_button.pack(pady=5)
 
+export_image_as_pattern_button = ctk.CTkButton(app, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern())
+export_image_as_pattern_button.pack(pady=5)
+
 # ---------- Sliders ----------
 
 slider_defaults = {"brightness": 1.0, "contrast": 1.0, "saturation": 1.0}
@@ -353,7 +499,6 @@ def create_slider(label_text, var_name, row):
         from_=0.2,
         to=2.0,
         number_of_steps=100,
-        #command=lambda v: apply_color_sliders(),
         command = lambda v: update_all_levels(),
     )
     slider.set(slider_defaults[var_name])
