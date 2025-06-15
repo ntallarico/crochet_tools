@@ -400,7 +400,7 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
 		#messagebox.showinfo("Success", output_file_name + " created in folder '" + output_directory + "'")
 	else:
 		print(output_file_name + " save failed")
-		#messagebox.showinfo(error_box_header, "Error: Save failed. Make sure file '" + get_file_name_from_path(output_file_name) + "' is not already open on computer.")
+		messagebox.showinfo(error_box_header, "Error: Save failed. Make sure file '" + get_file_name_from_path(output_file_name) + "' is not already open on computer.")
 	#set_progress(0, 1)
 	#enable_gui_buttons()
 
