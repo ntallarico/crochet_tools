@@ -18,6 +18,8 @@ SOFTWARE.
 
 # ---------- Import Libraries ----------
 
+import sys
+from io import TextIOWrapper
 from os import path, mkdir
 import customtkinter as ctk
 from tkinter import filedialog
@@ -55,7 +57,31 @@ image_lvl3 = None
 
 
 
+# ---------- Classes ----------
 
+# custom stream class that will handle the redirection of standard and error output to the UI console
+class TextBoxRedirector(TextIOWrapper):
+    def __init__(self, textbox):
+        super().__init__(sys.stdout.buffer)
+        self.textbox = textbox
+        self._buffer = []
+        
+    def write(self, string):
+        self._buffer.append(string)
+        self.textbox.configure(state="normal")
+        self.textbox.insert("end", string)
+        self.textbox.see("end")
+        self.textbox.update()  # force the textbox to update immediately instead of writing things to a buffer
+        
+        # keep only last 1000 lines
+        line_count = int(self.textbox.index('end-1c').split('.')[0])
+        if line_count > 1000:
+            self.textbox.delete("1.0", "2.0")
+        
+        self.textbox.configure(state="disabled")
+        
+    def flush(self):
+        pass
 
 
 # ---------- Functions ----------
@@ -74,6 +100,7 @@ def select_file():
         image_lvl0 = Image.open(filepath).convert("RGB")
         update_image_display(image_lvl0, image_lvl0_image_label)
         update_all_levels()
+        print(f"Image file loaded:\n'{filepath}'")
 
 def reset_sliders():
     if image_lvl0 == None: return
@@ -129,6 +156,7 @@ def process_lvl1_to_lvl2():
     # update image_lvl2 on the UI display
     update_image_display(image_lvl2, image_lvl2_image_label)
 
+# currently unused
 def process_lvl2_to_lvl3():
     global image_lvl2, image_lvl3
     # curently does nothing
@@ -159,7 +187,6 @@ def apply_color_sliders(image):
 
 def pixelate_image(image, width, height):
     if image == None: return
-    # TODO: maintain aspect ratio?
     image_pixelated = image.resize((width, height))
     return image_pixelated
 
@@ -316,9 +343,11 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
 	wb = Workbook()
 	ws = wb.create_sheet(output_file_name, index=0)
 
+	print("Exporting pattern to Excel")
+
 	# fill worksheet with image
 	for x in range(0, len(colors)):
-		print("Converting - " +  str(x) + "/" + str(len(colors)) + " to Excel")
+		print("Processing row: " +  str(x) + "/" + str(len(colors)))
 		#set_progress(x + 1, len(colors))
 		for y in range(0, len(colors[x])):
 			cell_color = rgb_to_hex(colors[x][y])
@@ -335,7 +364,7 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
 			ws[cell_name].border = cell_border
 			ws[cell_name].font = cell_font
 		ws.column_dimensions[get_column(x + 1)].width = column_size # set column size
-	print("Conversion complete")
+	print("Export complete!")
 
 	# add legend
 	used_colors, used_map = get_used_color_palette(colors, color_map)
@@ -367,11 +396,11 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
 	output_file_path = output_directory + "\\" + output_file_name + ".xlsx"
 	save_success = save_wb(wb, output_file_path)
 	if save_success:
-		print(output_file_name + " created")
-		messagebox.showinfo("Success", output_file_name + " created in folder '" + output_directory + "'")
+		print(f"File '{output_file_name}.xlsx' created at location: '{output_file_path}'")
+		#messagebox.showinfo("Success", output_file_name + " created in folder '" + output_directory + "'")
 	else:
 		print(output_file_name + " save failed")
-		messagebox.showinfo(error_box_header, "Error: Save failed. Make sure file '" + get_file_name_from_path(output_file_name) + "' is not already open on computer.")
+		#messagebox.showinfo(error_box_header, "Error: Save failed. Make sure file '" + get_file_name_from_path(output_file_name) + "' is not already open on computer.")
 	#set_progress(0, 1)
 	#enable_gui_buttons()
 
@@ -445,6 +474,7 @@ frame_image_lvl0.grid_rowconfigure(0, weight=1)
 image_lvl0_image_label = ctk.CTkLabel(frame_image_lvl0, text="")
 image_lvl0_image_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
+# button to select an image file
 file_button = ctk.CTkButton(frame_col0_image_editing, text="Select Image File", command = lambda: select_file())
 file_button.grid(row=2, column=0, padx=5, pady=5)
 
@@ -457,8 +487,11 @@ frame_console.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 console_text_label = ctk.CTkLabel(frame_console, text="Console")
 console_text_label.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
 # console text box
-console_text_box = ctk.CTkTextbox(frame_console)
+console_text_box = ctk.CTkTextbox(frame_console, state="disabled")
 console_text_box.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+
+# redirect stdout to the console textbox
+sys.stdout = TextBoxRedirector(console_text_box)
 
 # ---------- Frame: col1 ----------
 
