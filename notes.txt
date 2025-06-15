@@ -1,4 +1,6 @@
 to do
 
-- add button to choose to ouput with numbers in cells or not
+- rearrange UI to diagram
+- pixel shift?
+    - how to do. bring back into python? or excel VBA? ideally python I would like
 
