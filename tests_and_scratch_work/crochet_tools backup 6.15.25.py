@@ -12,8 +12,8 @@ SOFTWARE.
 """
 
 #################################
-#       Crochet Tools            
-#            v1.0                
+#       Crochet Tools              
+#            v1.0             
 #################################
 
 # ---------- Import Libraries ----------
@@ -72,7 +72,7 @@ def select_file():
     filepath = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg *.png *.jpeg")])
     if filepath:
         image_lvl0 = Image.open(filepath).convert("RGB")
-        update_image_display(image_lvl0, image_lvl0_image_label)
+        update_image_display(image_lvl0, image_lvl0_label)
         update_all_levels()
 
 def reset_sliders():
@@ -88,23 +88,23 @@ def reset_sliders():
 def update_image_display(image, image_label):
     if image == None: return
 
-    display_img = resize_for_display(image, max_size=500)
+    display_img = resize_for_display(image)
     img_tk_new = ImageTk.PhotoImage(display_img)
     image_label.configure(image=img_tk_new)
     image_label.image = img_tk_new
 
 def process_lvl0_to_lvl1():
-    global image_lvl0, image_lvl1, image_lvl1_image_label
+    global image_lvl0, image_lvl1, image_lvl1_label
     new_image = image_lvl0.copy()
     # apply color sliders
     new_image = apply_color_sliders(new_image)
     # update image_lvl1 in memory
     image_lvl1 = new_image
     # update image_lvl1 on the UI display
-    update_image_display(image_lvl1, image_lvl1_image_label)
+    update_image_display(image_lvl1, image_lvl1_label)
 
 def process_lvl1_to_lvl2():
-    global image_lvl1, image_lvl2, image_lvl2_image_label
+    global image_lvl1, image_lvl2, image_lvl2_label
 
     if not dimensions_valid(width_entry.get(), height_entry.get()):
         return None, None
@@ -127,7 +127,7 @@ def process_lvl1_to_lvl2():
     # update image_lvl2 in memory
     image_lvl2 = new_image
     # update image_lvl2 on the UI display
-    update_image_display(image_lvl2, image_lvl2_image_label)
+    update_image_display(image_lvl2, image_lvl2_label)
 
 def process_lvl2_to_lvl3():
     global image_lvl2, image_lvl3
@@ -136,7 +136,7 @@ def process_lvl2_to_lvl3():
     # update image_lvl3 in memory
     image_lvl3 = new_image
     # update image_lvl3 on the UI display
-    #update_image_display(image_lvl3, image_lvl3_image_label)
+    #update_image_display(image_lvl3, image_lvl3_label)
 
 def update_all_levels():
     process_lvl0_to_lvl1()
@@ -391,161 +391,79 @@ ctk.set_default_color_theme("blue")
 app = ctk.CTk()
 app.geometry(f"{window_width}x{window_height}")
 app.title(window_title)
-# configure to use grid
-app.grid_rowconfigure(0, weight=1) # make row 0 expandable
-app.grid_columnconfigure(0, weight=1) # make column 0 expandable
 
-# ---------- UI Frame Structure ----------
+# ---------- UI Frames ----------
 
-frame_app = ctk.CTkFrame(app)
-frame_app.grid(row=0, column=0, padx=5, pady=5, sticky="nsew") # new = stick to sides: north, south, east, west
-frame_app.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_app.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-# set columns to be expandable so they appear evenly spaced across the window
-frame_app.grid_columnconfigure(0, weight=1)
-frame_app.grid_columnconfigure(1, weight=1)
-frame_app.grid_columnconfigure(2, weight=1)
+image_frame = ctk.CTkFrame(app)
+image_frame.pack(pady=10)
 
-# frame for column 0
-frame_col0 = ctk.CTkFrame(frame_app, fg_color="transparent")
-frame_col0.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-frame_col0.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-frame_col0.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+control_frame = ctk.CTkFrame(app)
+control_frame.pack(pady=10)
 
-frame_col1 = ctk.CTkFrame(frame_app, fg_color="transparent")
-frame_col1.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
-frame_col1.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-frame_col1.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+slider_frame = ctk.CTkFrame(control_frame)
+slider_frame.grid(row=0, column=0, padx=10)
 
-frame_col2 = ctk.CTkFrame(frame_app, fg_color="transparent")
-frame_col2.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
-frame_col2.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-frame_col2.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+entry_frame = ctk.CTkFrame(control_frame)
+entry_frame.grid(row=0, column=1, padx=10)
 
-# ---------- Frame: col0 ----------
-
-# image editting frame for column 0, for image lvl0 display and all associated controls
-frame_col0_image_editing = ctk.CTkFrame(frame_col0, fg_color=("gray75", "gray25"))
-frame_col0_image_editing.grid(row=0, column=0, padx=5, pady=5, sticky="new")
-frame_col0_image_editing.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-
-# text label for step 1
-label_step1 = ctk.CTkLabel(frame_col0_image_editing, text="Step 1", font=("Arial", 24))
-label_step1.grid(row=0, column=0, padx=5, pady=5)
+# ---------- Image Display ----------
 
 # image_lvl0 (original) frame for image
-frame_image_lvl0 = ctk.CTkFrame(frame_col0_image_editing, width=500, height=500)
-frame_image_lvl0.grid(row=1, column=0, padx=5, pady=5)
-frame_image_lvl0.grid_propagate(False)
-# make needed columns and rows expandable so things can be centered
-frame_image_lvl0.grid_columnconfigure(0, weight=1)
-frame_image_lvl0.grid_rowconfigure(0, weight=1)
-
+image_lvl0_frame = ctk.CTkFrame(image_frame, width=500, height=500)
+image_lvl0_frame.grid(row=1, column=0, padx=10)
+image_lvl0_frame.grid_propagate(False)
+# image_lvl0 (original) frame text label
+image_lvl0_label = ctk.CTkLabel(image_frame, text="Original")
+image_lvl0_label.grid(row=0, column=0, padx=10)
 # image_lvl0 (original) image label
-image_lvl0_image_label = ctk.CTkLabel(frame_image_lvl0, text="")
-image_lvl0_image_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-
-file_button = ctk.CTkButton(frame_col0_image_editing, text="Select Image File", command = lambda: select_file())
-file_button.grid(row=2, column=0, padx=5, pady=5)
-
-# console frame
-frame_console = ctk.CTkFrame(frame_col0, fg_color=("gray75", "gray25"))
-frame_console.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-frame_console.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_console.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-# console text label
-console_text_label = ctk.CTkLabel(frame_console, text="Console")
-console_text_label.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-# console text box
-console_text_box = ctk.CTkTextbox(frame_console)
-console_text_box.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-
-# ---------- Frame: col1 ----------
-
-# image editting frame for column 1, for image lvl1 display and all associated controls
-frame_col1_image_editing = ctk.CTkFrame(frame_col1, fg_color=("gray75", "gray25"))
-frame_col1_image_editing.grid(row=0, column=0, padx=5, pady=5, sticky="new")
-frame_col1_image_editing.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-
-# text label for step 2
-label_step1 = ctk.CTkLabel(frame_col1_image_editing, text="Step 2", font=("Arial", 24))
-label_step1.grid(row=0, column=0, padx=5, pady=5)
+image_lvl0_label = ctk.CTkLabel(image_lvl0_frame, text="")
+image_lvl0_label.place(relx=0.5, rely=0.5, anchor="center")
 
 # image_lvl1 frame for image
-frame_image_lvl1 = ctk.CTkFrame(frame_col1_image_editing, width=500, height=500)
-frame_image_lvl1.grid(row=1, column=0, padx=5, pady=5)
-frame_image_lvl1.grid_propagate(False)
-# make needed columns and rows expandable so things can be centered
-frame_image_lvl1.grid_columnconfigure(0, weight=1)
-frame_image_lvl1.grid_rowconfigure(0, weight=1)
-
+image_lvl1_frame = ctk.CTkFrame(image_frame, width=500, height=500)
+image_lvl1_frame.grid(row=1, column=1, padx=10)
+image_lvl1_frame.grid_propagate(False)
+# image_lvl1 frame text label
+image_lvl1_label = ctk.CTkLabel(image_frame, text="Process Level 1")
+image_lvl1_label.grid(row=0, column=1, padx=10)
 # image_lvl1 image label
-image_lvl1_image_label = ctk.CTkLabel(frame_image_lvl1, text="")
-image_lvl1_image_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-
-# frame for value sliders
-frame_image_value_sliders = ctk.CTkFrame(frame_col1_image_editing)
-frame_image_value_sliders.grid(row=2, column=0, padx=5, pady=5)
-
-# dummy content 1
-# frame_dummy_preprocess1 = ctk.CTkFrame(frame_col1_image_editing)
-# frame_dummy_preprocess1.grid(row=3, column=0, padx=5, pady=5)
-# label_dummy_preprocess1 = ctk.CTkLabel(frame_dummy_preprocess1, text="put more controls here")
-# label_dummy_preprocess1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-
-# ---------- Frame: col2 ----------
-
-# image editting frame for column 2, for image lvl2 display and all associated controls
-frame_col2_image_editing = ctk.CTkFrame(frame_col2, fg_color=("gray75", "gray25"))
-frame_col2_image_editing.grid(row=0, column=0, padx=5, pady=5, sticky="new")
-frame_col2_image_editing.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-
-# text label for step 3
-label_step2 = ctk.CTkLabel(frame_col2_image_editing, text="Step 3", font=("Arial", 24))
-label_step2.grid(row=0, column=0, padx=5, pady=5)
+image_lvl1_label = ctk.CTkLabel(image_lvl1_frame, text="")
+image_lvl1_label.place(relx=0.5, rely=0.5, anchor="center")
 
 # image_lvl2 frame for image
-frame_image_lvl2 = ctk.CTkFrame(frame_col2_image_editing, width=500, height=500)
-frame_image_lvl2.grid(row=1, column=0, padx=5, pady=5)
-frame_image_lvl2.grid_propagate(False)
-# make needed columns and rows expandable so things can be centered
-frame_image_lvl2.grid_columnconfigure(0, weight=1)
-frame_image_lvl2.grid_rowconfigure(0, weight=1)
-
+image_lvl2_frame = ctk.CTkFrame(image_frame, width=500, height=500)
+image_lvl2_frame.grid(row=1, column=2, padx=10)
+image_lvl2_frame.grid_propagate(False)
+# image_lvl2 frame text label
+image_lvl2_label = ctk.CTkLabel(image_frame, text="Process Level 2")
+image_lvl2_label.grid(row=0, column=2, padx=10)
 # image_lvl2 image label
-image_lvl2_image_label = ctk.CTkLabel(frame_image_lvl2, text="")
-image_lvl2_image_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+image_lvl2_label = ctk.CTkLabel(image_lvl2_frame, text="")
+image_lvl2_label.place(relx=0.5, rely=0.5, anchor="center")
 
+# ---------- Buttons ----------
 
-# frame for pixelate controls
-frame_pixelate = ctk.CTkFrame(frame_col2_image_editing)
-frame_pixelate.grid(row=2, column=0, padx=5, pady=5)
+reset_button = ctk.CTkButton(app, text="Reset Sliders", command = lambda: reset_sliders())
+reset_button.pack(pady=5)
 
-# frame for export to excel controls
-frame_export_to_excel = ctk.CTkFrame(frame_col2, fg_color=("gray75", "gray25"))
-frame_export_to_excel.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-frame_export_to_excel.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_export_to_excel.grid_rowconfigure(1, weight=1) # set row 1 to expandable
-frame_export_to_excel.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-frame_export_to_excel.grid_columnconfigure(1, weight=1) # set column 1 to expandable
+update_button = ctk.CTkButton(app, text="Update", command = lambda: update_all_levels())
+update_button.pack(pady=5)
 
-# ---------- Frame: Value Sliders ----------
+file_button = ctk.CTkButton(app, text="Select Image File", command = lambda: select_file())
+file_button.pack(pady=5)
 
-# reset sliders button
-reset_button = ctk.CTkButton(frame_image_value_sliders, text="Reset Sliders", command = lambda: reset_sliders())
-reset_button.grid(row=0, column=0, padx=5, pady=5)
+export_image_as_pattern_button = ctk.CTkButton(app, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = include_cells_var.get()))
+export_image_as_pattern_button.pack(pady=5)
 
-# sliders: brightness, contrast, saturation
-frame_slider = ctk.CTkFrame(frame_image_value_sliders, fg_color="transparent")
-frame_slider.grid(row=0, column=1, padx=5, pady=5)
+# ---------- Sliders ----------
 
 slider_defaults = {"brightness": 1.0, "contrast": 1.0, "saturation": 1.0}
 
 def create_slider(label_text, var_name, row):
-    label = ctk.CTkLabel(frame_slider, text=label_text)
+    label = ctk.CTkLabel(slider_frame, text=label_text)
     label.grid(row=row, column=0, sticky="w")
     slider = ctk.CTkSlider(
-        frame_slider,
+        slider_frame,
         from_=0.2,
         to=2.0,
         number_of_steps=100,
@@ -559,20 +477,12 @@ brightness_slider = create_slider("Brightness", "brightness", 0)
 contrast_slider   = create_slider("Contrast", "contrast", 1)
 saturation_slider = create_slider("Saturation", "saturation", 2)
 
-# ---------- Frame: Pixelate ----------
-
-# update button
-update_button = ctk.CTkButton(frame_pixelate, text="Update", command = lambda: update_all_levels())
-update_button.grid(row=1, column=0, padx=5, pady=5)
-
-# entry boxes
-frame_entry = ctk.CTkFrame(frame_pixelate)
-frame_entry.grid(row=0, column=0, padx=5, pady=5)
+# ---------- Entry Boxes ----------
 
 def create_entry(label_text, default_text, row):
-    lbl = ctk.CTkLabel(frame_entry, text=label_text)
+    lbl = ctk.CTkLabel(entry_frame, text=label_text)
     lbl.grid(row=row, column=0, sticky="w")
-    entry = ctk.CTkEntry(frame_entry)
+    entry = ctk.CTkEntry(entry_frame)
     entry.insert(0, default_text)
     entry.grid(row=row, column=1, pady=5, padx=5)
     entry.bind('<Return>', lambda e: update_all_levels()) # update images when user presses Enter
@@ -583,38 +493,43 @@ width_entry  = create_entry("Width", "75", 0)
 height_entry = create_entry("Height", "75", 1)
 colors_entry = create_entry("Number of Colors", "3", 2)
 
-# ---------- Frame: Export to Excel ----------
+# ---------- Checkbox ----------
 
-# label for title
-label_step4 = ctk.CTkLabel(frame_export_to_excel, text="Step 4", font=("Arial", 24))
-label_step4.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-
-# frame for export button
-frame_export_button = ctk.CTkFrame(frame_export_to_excel, fg_color="transparent")
-frame_export_button.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-frame_export_button.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_export_button.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-
-# frame for controls
-frame_export_controls = ctk.CTkFrame(frame_export_to_excel, fg_color="transparent")
-frame_export_controls.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
-frame_export_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_export_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-
-# export to excel button
-export_image_as_pattern_button = ctk.CTkButton(frame_export_button, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = include_cells_var.get()))
-export_image_as_pattern_button.grid(row=0, column=0, padx=5, pady=5)
-
-# checkbox: include cell numbers
 include_cells_var = ctk.BooleanVar()
-checkbox = ctk.CTkCheckBox(frame_export_controls, text="Include color numbers in cells", variable=include_cells_var)
-checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
-
-# checkbox: include row numbers
-include_rownums_var = ctk.BooleanVar()
-checkbox_include_rownums = ctk.CTkCheckBox(frame_export_controls, text="Include row numbers", variable=include_rownums_var)
-checkbox_include_rownums.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
+checkbox = ctk.CTkCheckBox(app, text="Include cell numbers", variable=include_cells_var) #, command = lambda: update_all_levels()
+checkbox.pack()
 
 # ---------- Launch ----------
 app.mainloop()
 
+
+'''
+
+globally store
+    - original image
+    - image lvl1
+    - image lvl2
+    - image lvl3
+    - image lvl4
+
+level update functions
+    - process from lvl1 to lvl2
+    - process from lvl2 to lvl3
+    - process from lvl3 to lvl4
+    - update all levels (in order)
+
+image processing funcitons
+    - slider color update
+    - blur
+    - pixelate
+    - resize
+
+- level update functions call the image processing functions. that will make it easier to switch around their functionality as desired
+
+- when file is loaded, run the "update all levels" function
+- when any button is pressed or value is updated, run "update all levels" function. lets have it run this way until performance tanks lol
+
+
+
+
+'''
