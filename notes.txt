@@ -3,4 +3,4 @@ to do
 - rearrange UI to diagram
 - pixel shift?
     - how to do. bring back into python? or excel VBA? ideally python I would like
-
+- ability to choose colors! would be a big one I think
