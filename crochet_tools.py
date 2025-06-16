@@ -273,10 +273,10 @@ def rgb_to_hex(color):
 	return '%02x%02x%02x' % (color[0], color[1], color[2])
 
 def get_cell_name(x, y):
-	col = get_column(x + 1)
-	row = get_row(y)
-
-	return col + row
+    if x < 0:
+        return f"A{get_row(y)}"  # Left side row numbers
+    else:
+        return f"{get_column(x + 1)}{get_row(y)}"  # Normal cells and right side row numbers
 
 def get_column(num):
 	def divmod_excel(n):
@@ -317,92 +317,142 @@ def check_output_directory():
 # IN: workbook, file path
 # OUT: boolean indicating success
 def save_wb(wb, output_file_path):
-	try:
-		wb.save(output_file_path)
-		return True
-	except Exception as e:
-		return False
-	
+    try:
+        wb.save(output_file_path)
+        return True
+    except Exception as e:
+        print(f"Error saving workbook: {str(e)}")
+        return False
+    finally:
+        try:
+            wb.close()
+        except Exception as e:
+            print(f"Warning: Error during workbook cleanup: {str(e)}")
+
+def cleanup_workbook(wb):
+    """Clean up workbook resources"""
+    try:
+        if wb:
+            wb.close()
+    except Exception as e:
+        print(f"Warning: Error during workbook cleanup: {str(e)}")
+
+# Add cleanup handler for application exit
+def on_app_exit():
+    """Handle cleanup when application exits"""
+    try:
+        # Add any additional cleanup needed here
+        pass
+    except Exception as e:
+        print(f"Warning: Error during application cleanup: {str(e)}")
+
 def get_file_name_from_path(file_path):
 	return file_path.split("/")[-1]
 
-def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = False):
-	column_size = 2.8 # this number is about 20 pixels, same as the default height
-	cell_fill_type = 'solid'
-	legend_buffer = 1
-	output_file_name = "output"
+def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = False, include_row_numbers = True):
+    column_size = 2.8 # this number is about 20 pixels, same as the default height
+    cell_fill_type = 'solid'
+    legend_buffer = 2
+    output_file_name = "output"
+    wb = None
 
-	image_to_export = image_lvl3
+    try:
+        image_to_export = image_lvl3
 
-	if image_to_export == None: return
+        if image_to_export == None: return
 
-    # get color grid and map from final image
-	colors, color_map = get_colors(image_to_export)
+        # get color grid and map from final image
+        colors, color_map = get_colors(image_to_export)
 
-	# create worksheet
-	wb = Workbook()
-	ws = wb.create_sheet(output_file_name, index=0)
+        # create worksheet
+        wb = Workbook()
+        ws = wb.create_sheet(output_file_name, index=0)
 
-	print("Exporting pattern to Excel")
+        print("Exporting pattern to Excel")
 
-	# fill worksheet with image
-	for x in range(0, len(colors)):
-		print("Processing row: " +  str(x) + "/" + str(len(colors)))
-		#set_progress(x + 1, len(colors))
-		for y in range(0, len(colors[x])):
-			cell_color = rgb_to_hex(colors[x][y])
-			font_color = get_font_color(colors[x][y])
-			cell_symbol = color_map[x][y]
-			cell_alignment = styles.Alignment(horizontal='center')
-			cell_fill = styles.PatternFill(fill_type=cell_fill_type, start_color=cell_color, end_color=cell_color)
-			cell_border = styles.Border(left=styles.Side(style='thin'), right=styles.Side(style='thin'), top=styles.Side(style='thin'), bottom=styles.Side(style='thin'))
-			cell_font = styles.Font(name='Calibri', bold=False, italic=False, color=font_color)
-			cell_name = get_cell_name(x, y)
-			ws[cell_name].alignment  = cell_alignment
-			if include_pixel_numbers: ws[cell_name].value = cell_symbol
-			ws[cell_name].fill = cell_fill
-			ws[cell_name].border = cell_border
-			ws[cell_name].font = cell_font
-		ws.column_dimensions[get_column(x + 1)].width = column_size # set column size
-	print("Export complete!")
+        # if including row numbers column, fill column to left of image with row numbers
+        if include_row_numbers:
+            ws.column_dimensions['A'].width = column_size
+            for y in range(0, len(colors[0])):
+                cell_name = get_cell_name(0, y)  # 0 for leftmost column
+                ws[cell_name].value = str(y + 1)  # +1 to start from 1 instead of 0
+                ws[cell_name].alignment = styles.Alignment(horizontal='right')
 
-	# add legend
-	used_colors, used_map = get_used_color_palette(colors, color_map)
-	width = len(colors)
-	for c in range(-1, len(used_colors)):
-		if(c == -1):
-			ws[get_cell_name(width + legend_buffer, 0)].value = "Color"
-			ws[get_cell_name(width + legend_buffer + 1, 0)].value = "HEX"
-			ws[get_cell_name(width + legend_buffer + 2, 0)].value = "Red Value"
-			ws[get_cell_name(width + legend_buffer + 3, 0)].value = "Green Value"
-			ws[get_cell_name(width + legend_buffer + 4, 0)].value = "Blue Value"
-			continue		
-		color_rgb = used_colors[c]
-		color_symbol = used_map[c]
-		color_hex = rgb_to_hex(color_rgb)
-		font_color = get_font_color(color_rgb)
-		cell_font = styles.Font(color=font_color)
-		ws[get_cell_name(width + legend_buffer, c + 1)].fill = styles.PatternFill(fill_type=cell_fill_type, start_color=color_hex, end_color=color_hex)
-		if include_pixel_numbers: ws[get_cell_name(width + legend_buffer, c + 1)].value = str(color_symbol)
-		ws[get_cell_name(width + legend_buffer, c + 1)].font = cell_font
-		ws[get_cell_name(width + legend_buffer + 1, c + 1)].value = str(color_hex)
-		ws[get_cell_name(width + legend_buffer + 2, c + 1)].value = str(color_rgb[0])
-		ws[get_cell_name(width + legend_buffer + 3, c + 1)].value = str(color_rgb[1])
-		ws[get_cell_name(width + legend_buffer + 4, c + 1)].value = str(color_rgb[2])
+        # fill worksheet with image
+        for x in range(0, len(colors)):
+            print("Processing row: " +  str(x) + "/" + str(len(colors)))
+            for y in range(0, len(colors[x])):
+                cell_color = rgb_to_hex(colors[x][y])
+                font_color = get_font_color(colors[x][y])
+                cell_symbol = color_map[x][y]
+                cell_alignment = styles.Alignment(horizontal='center')
+                cell_fill = styles.PatternFill(fill_type=cell_fill_type, start_color=cell_color, end_color=cell_color)
+                cell_border = styles.Border(left=styles.Side(style='thin'), right=styles.Side(style='thin'), top=styles.Side(style='thin'), bottom=styles.Side(style='thin'))
+                cell_font = styles.Font(name='Calibri', bold=False, italic=False, color=font_color)
+                # Adjust x coordinate if we have row numbers
+                adjusted_x = x + 1 if include_row_numbers else x
+                cell_name = get_cell_name(adjusted_x, y)
+                ws[cell_name].alignment = cell_alignment
+                if include_pixel_numbers: ws[cell_name].value = cell_symbol
+                ws[cell_name].fill = cell_fill
+                ws[cell_name].border = cell_border
+                ws[cell_name].font = cell_font
+            # Set column width for the current column
+            col_letter = get_column(x + (2 if include_row_numbers else 1))
+            ws.column_dimensions[col_letter].width = column_size
 
-	# save the file
-	check_output_directory()
-	output_directory = csv_output_directory
-	output_file_path = output_directory + "\\" + output_file_name + ".xlsx"
-	save_success = save_wb(wb, output_file_path)
-	if save_success:
-		print(f"File '{output_file_name}.xlsx' created at location: '{output_file_path}'")
-		#messagebox.showinfo("Success", output_file_name + " created in folder '" + output_directory + "'")
-	else:
-		print(output_file_name + " save failed")
-		messagebox.showinfo(error_box_header, "Error: Save failed. Make sure file '" + get_file_name_from_path(output_file_name) + "' is not already open on computer.")
-	#set_progress(0, 1)
-	#enable_gui_buttons()
+        # if including row numbers column, fill column to right of image with row numbers
+        if include_row_numbers:
+            col_num = len(colors) + 1
+            col_letter = get_column(col_num + 1)
+            ws.column_dimensions[col_letter].width = column_size
+            for y in range(0, len(colors[0])):
+                cell_name = get_cell_name(col_num, y)
+                ws[cell_name].value = str(y + 1)  # +1 to start from 1 instead of 0
+                ws[cell_name].alignment = styles.Alignment(horizontal='right')
+
+        # add legend (adjust the position to account for the row numbers column)
+        used_colors, used_map = get_used_color_palette(colors, color_map)
+        width = len(colors)
+        legend_start = width + (2 if include_row_numbers else 1)  # Adjust for row numbers column
+        for c in range(-1, len(used_colors)):
+            if(c == -1):
+                ws[get_cell_name(legend_start + legend_buffer, 0)].value = "Color"
+                ws[get_cell_name(legend_start + legend_buffer + 1, 0)].value = "HEX"
+                ws[get_cell_name(legend_start + legend_buffer + 2, 0)].value = "Red Value"
+                ws[get_cell_name(legend_start + legend_buffer + 3, 0)].value = "Green Value"
+                ws[get_cell_name(legend_start + legend_buffer + 4, 0)].value = "Blue Value"
+                continue        
+            color_rgb = used_colors[c]
+            color_symbol = used_map[c]
+            color_hex = rgb_to_hex(color_rgb)
+            font_color = get_font_color(color_rgb)
+            cell_font = styles.Font(color=font_color)
+            ws[get_cell_name(legend_start + legend_buffer, c + 1)].fill = styles.PatternFill(fill_type=cell_fill_type, start_color=color_hex, end_color=color_hex)
+            if include_pixel_numbers: ws[get_cell_name(legend_start + legend_buffer, c + 1)].value = str(color_symbol)
+            ws[get_cell_name(legend_start + legend_buffer, c + 1)].font = cell_font
+            ws[get_cell_name(legend_start + legend_buffer + 1, c + 1)].value = str(color_hex)
+            ws[get_cell_name(legend_start + legend_buffer + 2, c + 1)].value = str(color_rgb[0])
+            ws[get_cell_name(legend_start + legend_buffer + 3, c + 1)].value = str(color_rgb[1])
+            ws[get_cell_name(legend_start + legend_buffer + 4, c + 1)].value = str(color_rgb[2])
+
+        # save the file
+        check_output_directory()
+        output_directory = csv_output_directory
+        output_file_path = output_directory + "\\" + output_file_name + ".xlsx"
+        save_success = save_wb(wb, output_file_path)
+        if save_success:
+            print("Export complete!")
+            print(f"File '{output_file_name}.xlsx' created at location: '{output_file_path}'")
+        else:
+            print(output_file_name + " save failed")
+            messagebox.showinfo(error_box_header, "Error: Save failed. Make sure file '" + get_file_name_from_path(output_file_name) + "' is not already open on computer.")
+    except Exception as e:
+        print(f"Error during export: {str(e)}")
+        messagebox.showinfo(error_box_header, f"Error during export: {str(e)}")
+    finally:
+        if wb:
+            cleanup_workbook(wb)
 
 
 
@@ -635,7 +685,7 @@ frame_export_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
 frame_export_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # export to excel button
-export_image_as_pattern_button = ctk.CTkButton(frame_export_button, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = include_cells_var.get()))
+export_image_as_pattern_button = ctk.CTkButton(frame_export_button, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = include_cells_var.get(), include_row_numbers = include_rownums_var.get()))
 export_image_as_pattern_button.grid(row=0, column=0, padx=5, pady=5)
 
 # checkbox: include cell numbers
@@ -644,7 +694,7 @@ checkbox = ctk.CTkCheckBox(frame_export_controls, text="Include color numbers in
 checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
 
 # checkbox: include row numbers
-include_rownums_var = ctk.BooleanVar()
+include_rownums_var = ctk.BooleanVar(value=True)
 checkbox_include_rownums = ctk.CTkCheckBox(frame_export_controls, text="Include row numbers", variable=include_rownums_var)
 checkbox_include_rownums.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
 
