@@ -452,7 +452,6 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
     finally:
         if wb:
             cleanup_workbook(wb)
-            
 
 
 # Import a pattern from Excel, specifying the rectangular region by start_cell and end_cell (e.g., "B1", "BX75").
@@ -520,8 +519,8 @@ def import_pattern_from_excel(start_cell, end_cell):
         print(f"File path: '{filepath}'")
 
         # test import by replacing image_lvl0
-        # image_lvl0 = img
-        # update_image_display(image_lvl0, image_lvl0_image_label)
+        image_lvl0 = img
+        update_image_display(image_lvl0, image_lvl0_image_label)
 
         return img
 
@@ -529,8 +528,8 @@ def import_pattern_from_excel(start_cell, end_cell):
         print(f"Error importing pattern from Excel: {e}")
         return None
 
-
-
+def pixel_shift_and_export():
+    print("nick implement pixel_shift_and_export()")
 
 
 # ---------- GUI Setup ----------
@@ -705,7 +704,7 @@ slider_defaults = {"brightness": 1.0, "contrast": 1.0, "saturation": 1.0}
 
 def create_slider(label_text, var_name, row):
     label = ctk.CTkLabel(frame_slider, text=label_text)
-    label.grid(row=row, column=0, sticky="w")
+    label.grid(row=row, column=0, padx=5, pady=5, sticky="w")
     slider = ctk.CTkSlider(
         frame_slider,
         from_=0.2,
@@ -733,7 +732,7 @@ frame_entry.grid(row=0, column=0, padx=5, pady=5)
 
 def create_entry(label_text, default_text, row):
     lbl = ctk.CTkLabel(frame_entry, text=label_text)
-    lbl.grid(row=row, column=0, sticky="w")
+    lbl.grid(row=row, column=0, padx=5, pady=5, sticky="w")
     entry = ctk.CTkEntry(frame_entry)
     entry.insert(0, default_text)
     entry.grid(row=row, column=1, pady=5, padx=5)
@@ -741,7 +740,7 @@ def create_entry(label_text, default_text, row):
     entry.bind('<FocusOut>', lambda e: update_all_levels()) # update images when user leaves text box
     return entry
 
-width_entry  = create_entry("Width (# of stitches)", "75", 0)
+width_entry = create_entry("Width (# of stitches)", "75", 0)
 height_entry = create_entry("Height (# of stitches)", "75", 1)
 colors_entry = create_entry("Number of Colors", "3", 2)
 
@@ -783,31 +782,46 @@ checkbox_include_rownums.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
 label_step5 = ctk.CTkLabel(frame_pixel_shift, text="Step 5", font=("Arial", 24))
 label_step5.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
 
-# frame for load pattern button
-frame_load_pattern_button = ctk.CTkFrame(frame_pixel_shift, fg_color="transparent")
-frame_load_pattern_button.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-frame_load_pattern_button.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_load_pattern_button.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+# frame for load pattern section
+frame_subsection_load_pattern = ctk.CTkFrame(frame_pixel_shift)
+frame_subsection_load_pattern.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+frame_subsection_load_pattern.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_subsection_load_pattern.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
-# frame for controls
-frame_controls = ctk.CTkFrame(frame_pixel_shift, fg_color="transparent")
-frame_controls.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
-frame_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+# load pattern from excel button
+load_pattern_button = ctk.CTkButton(frame_subsection_load_pattern, text="Step A: Import pattern", command = lambda: import_pattern_from_excel(excel_pattern_start_cell.get(), excel_pattern_end_cell.get()))
+load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="new")
 
-# export to excel button
-load_pattern_button = ctk.CTkButton(frame_load_pattern_button, text="Load Pattern from Excel", command = lambda: import_pattern_from_excel('B1', 'BX75'))
-load_pattern_button.grid(row=0, column=0, padx=5, pady=5)
+def create_load_pattern_config_entry(label_text, default_text, row):
+    lbl = ctk.CTkLabel(frame_subsection_load_pattern, text=label_text)
+    lbl.grid(row=row, column=0, padx=5, pady=5, sticky="w")
+    entry = ctk.CTkEntry(frame_subsection_load_pattern)
+    entry.insert(0, default_text)
+    entry.grid(row=row, column=1, pady=5, padx=5)
+    return entry
+
+excel_pattern_start_cell = create_load_pattern_config_entry("Pattern start (top left cell)", "B1", 1)
+excel_pattern_end_cell = create_load_pattern_config_entry("Pattern end (bottom right cell)", "BX75", 2)
+
+# frame for pixel shift section
+frame_subsection_pixel_shift = ctk.CTkFrame(frame_pixel_shift)
+frame_subsection_pixel_shift.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+frame_subsection_pixel_shift.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_subsection_pixel_shift.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
+# pixel shift button
+load_pattern_button = ctk.CTkButton(frame_subsection_pixel_shift, text="Step B: Pixel shift and export", command = lambda: pixel_shift_and_export())
+load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="new")
 
 # checkbox: some checkbox
 include_cells_var = ctk.BooleanVar()
-checkbox_dummy = ctk.CTkCheckBox(frame_controls, text="some checkbox", variable=include_cells_var)
-checkbox_dummy.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
+checkbox_dummy = ctk.CTkCheckBox(frame_subsection_pixel_shift, text="dummy checkbox", variable=include_cells_var)
+checkbox_dummy.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
 
 # checkbox: some checkbox
-include_rownums_var = ctk.BooleanVar(value=True)
-checkbox_dummy1 = ctk.CTkCheckBox(frame_controls, text="some checkbox2", variable=include_rownums_var)
-checkbox_dummy1.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
+include_rownums_var = ctk.BooleanVar()
+checkbox_dummy1 = ctk.CTkCheckBox(frame_subsection_pixel_shift, text="dummy checkbox", variable=include_rownums_var)
+checkbox_dummy1.grid(row=2, column=0, padx=5, pady=5, sticky="nsw")
 
 # ---------- Launch ----------
 app.mainloop()
