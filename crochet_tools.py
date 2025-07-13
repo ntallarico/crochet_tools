@@ -605,7 +605,7 @@ frame_pixelate = ctk.CTkFrame(frame_col2_image_editing)
 frame_pixelate.grid(row=2, column=0, padx=5, pady=5)
 
 # frame for export to excel controls
-frame_export_to_excel = ctk.CTkFrame(frame_col2, fg_color=("gray75", "gray25"))
+frame_export_to_excel = ctk.CTkFrame(frame_col1, fg_color=("gray75", "gray25"))
 frame_export_to_excel.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 frame_export_to_excel.grid_rowconfigure(0, weight=1) # set row 0 to expandable
 frame_export_to_excel.grid_rowconfigure(1, weight=1) # set row 1 to expandable
@@ -662,8 +662,8 @@ def create_entry(label_text, default_text, row):
     entry.bind('<FocusOut>', lambda e: update_all_levels()) # update images when user leaves text box
     return entry
 
-width_entry  = create_entry("Width", "75", 0)
-height_entry = create_entry("Height", "75", 1)
+width_entry  = create_entry("Width (# of stitches)", "75", 0)
+height_entry = create_entry("Height (# of stitches)", "75", 1)
 colors_entry = create_entry("Number of Colors", "3", 2)
 
 # ---------- Frame: Export to Excel ----------
