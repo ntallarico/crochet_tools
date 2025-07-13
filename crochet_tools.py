@@ -454,9 +454,8 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
         if wb:
             cleanup_workbook(wb)
 
-
-
-
+def import_pattern_from_excel(csv_output_directory):
+	print("nick implement function import_pattern_from_excel()")
 
 
 
@@ -612,6 +611,14 @@ frame_export_to_excel.grid_rowconfigure(1, weight=1) # set row 1 to expandable
 frame_export_to_excel.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 frame_export_to_excel.grid_columnconfigure(1, weight=1) # set column 1 to expandable
 
+# frame for pixel shift controls
+frame_pixel_shift = ctk.CTkFrame(frame_col2, fg_color=("gray75", "gray25"))
+frame_pixel_shift.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+frame_pixel_shift.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_pixel_shift.grid_rowconfigure(1, weight=1) # set row 1 to expandable
+frame_pixel_shift.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+frame_pixel_shift.grid_columnconfigure(1, weight=1) # set column 1 to expandable
+
 # ---------- Frame: Value Sliders ----------
 
 # reset sliders button
@@ -690,13 +697,45 @@ export_image_as_pattern_button.grid(row=0, column=0, padx=5, pady=5)
 
 # checkbox: include cell numbers
 include_cells_var = ctk.BooleanVar()
-checkbox = ctk.CTkCheckBox(frame_export_controls, text="Include color numbers in cells", variable=include_cells_var)
-checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
+checkbox_color_nums = ctk.CTkCheckBox(frame_export_controls, text="Include color numbers in cells", variable=include_cells_var)
+checkbox_color_nums.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
 
 # checkbox: include row numbers
 include_rownums_var = ctk.BooleanVar(value=True)
 checkbox_include_rownums = ctk.CTkCheckBox(frame_export_controls, text="Include row numbers", variable=include_rownums_var)
 checkbox_include_rownums.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
+
+# ---------- Frame: Pixel Shift ----------
+
+# label for title
+label_step5 = ctk.CTkLabel(frame_pixel_shift, text="Step 5", font=("Arial", 24))
+label_step5.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+# frame for load pattern button
+frame_load_pattern_button = ctk.CTkFrame(frame_pixel_shift, fg_color="transparent")
+frame_load_pattern_button.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+frame_load_pattern_button.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_load_pattern_button.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
+# frame for controls
+frame_controls = ctk.CTkFrame(frame_pixel_shift, fg_color="transparent")
+frame_controls.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+frame_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
+# export to excel button
+load_pattern_button = ctk.CTkButton(frame_load_pattern_button, text="Load Pattern from Excel", command = lambda: import_pattern_from_excel(csv_output_directory))
+load_pattern_button.grid(row=0, column=0, padx=5, pady=5)
+
+# checkbox: some checkbox
+include_cells_var = ctk.BooleanVar()
+checkbox_dummy = ctk.CTkCheckBox(frame_controls, text="some checkbox", variable=include_cells_var)
+checkbox_dummy.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
+
+# checkbox: some checkbox
+include_rownums_var = ctk.BooleanVar(value=True)
+checkbox_dummy1 = ctk.CTkCheckBox(frame_controls, text="some checkbox2", variable=include_rownums_var)
+checkbox_dummy1.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
 
 # ---------- Launch ----------
 app.mainloop()
