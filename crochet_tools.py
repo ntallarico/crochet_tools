@@ -372,10 +372,10 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
 
         # if including row numbers column, fill column to left of image with row numbers
         if include_row_numbers:
-            ws.column_dimensions['A'].width = column_size
+            #ws.column_dimensions['A'].width = column_size
             for y in range(0, len(colors[0])):
                 cell_name = get_cell_name(0, y)  # 0 for leftmost column
-                ws[cell_name].value = str(y + 1)  # +1 to start from 1 instead of 0
+                ws[cell_name].value = str(len(colors[0]) - y)  # Fill with descending numbers
                 ws[cell_name].alignment = styles.Alignment(horizontal='right')
 
         # fill worksheet with image
@@ -405,11 +405,11 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
         if include_row_numbers:
             col_num = len(colors) + 1
             col_letter = get_column(col_num + 1)
-            ws.column_dimensions[col_letter].width = column_size
-            for y in range(0, len(colors[0])):
+            #ws.column_dimensions[col_letter].width = column_size
+            for y in range(len(colors[0]) - 1, -1, -1):
                 cell_name = get_cell_name(col_num, y)
-                ws[cell_name].value = str(y + 1)  # +1 to start from 1 instead of 0
-                ws[cell_name].alignment = styles.Alignment(horizontal='right')
+                ws[cell_name].value = str(len(colors[0]) - y)  # Fill with descending numbers
+                ws[cell_name].alignment = styles.Alignment(horizontal='left')
 
         # add legend (adjust the position to account for the row numbers column)
         used_colors, used_map = get_used_color_palette(colors, color_map)
