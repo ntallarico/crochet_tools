@@ -25,9 +25,8 @@ import customtkinter as ctk
 from tkinter import filedialog
 from PIL import Image, ImageTk, ImageEnhance
 from tkinter import messagebox
-from openpyxl import styles
-from openpyxl import Workbook
-from openpyxl import load_workbook
+from openpyxl import styles, Workbook, load_workbook
+from openpyxl.utils import column_index_from_string
 from string import ascii_uppercase
 
 # ---------- Global Variables ----------
@@ -453,9 +452,82 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
     finally:
         if wb:
             cleanup_workbook(wb)
+            
 
-def import_pattern_from_excel(csv_output_directory):
-	print("nick implement function import_pattern_from_excel()")
+
+# Import a pattern from Excel, specifying the rectangular region by start_cell and end_cell (e.g., "B1", "BX75").
+def import_pattern_from_excel(start_cell, end_cell):
+    from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
+
+    # Prompt user to select Excel file
+    filepath = filedialog.askopenfilename(
+        filetypes=[("Excel files", "*.xlsx *.xls")]
+    )
+    if not filepath:
+        print("No file selected.")
+        return None
+
+    try:
+        wb = load_workbook(filepath, data_only=True)
+        ws = wb.active
+
+        # Parse start and end cell coordinates
+        start_col_name, start_row = coordinate_from_string(start_cell.upper())
+        end_col_name, end_row = coordinate_from_string(end_cell.upper())
+        start_col = column_index_from_string(start_col_name)
+        end_col = column_index_from_string(end_col_name)
+        start_row = int(start_row)
+        end_row = int(end_row)
+
+        # Ensure correct order (top-left to bottom-right)
+        min_row, max_row = min(start_row, end_row), max(start_row, end_row)
+        min_col, max_col = min(start_col, end_col), max(start_col, end_col)
+
+        width = max_col - min_col + 1
+        height = max_row - min_row + 1
+
+        # Read cell colors and build pixel data
+        pixels = []
+        for row in range(min_row, max_row + 1):
+            row_pixels = []
+            for col in range(min_col, max_col + 1):
+                cell = ws.cell(row=row, column=col)
+                # Try to get the cell's fill color
+                fill = cell.fill
+                rgb = (255, 255, 255)  # default to white
+                if fill and fill.fill_type is not None and fill.start_color is not None:
+                    color = fill.start_color
+                    # openpyxl color can be indexed or rgb
+                    if color.type == "rgb" and color.rgb is not None:
+                        hexstr = color.rgb
+                        # openpyxl may return ARGB, so skip first two chars if length 8
+                        if len(hexstr) == 8:
+                            hexstr = hexstr[2:]
+                        try:
+                            rgb = tuple(int(hexstr[i:i+2], 16) for i in (0, 2, 4))
+                        except Exception:
+                            rgb = (255, 255, 255)
+                row_pixels.append(rgb)
+            pixels.append(row_pixels)
+
+        # Create image from pixel data
+        img = Image.new("RGB", (width, height))
+        for y in range(height):
+            for x in range(width):
+                img.putpixel((x, y), pixels[y][x])
+
+        print("Pattern imported from Excel successfully!")
+        print(f"File path: '{filepath}'")
+
+        # test import by replacing image_lvl0
+        # image_lvl0 = img
+        # update_image_display(image_lvl0, image_lvl0_image_label)
+
+        return img
+
+    except Exception as e:
+        print(f"Error importing pattern from Excel: {e}")
+        return None
 
 
 
@@ -724,7 +796,7 @@ frame_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
 frame_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # export to excel button
-load_pattern_button = ctk.CTkButton(frame_load_pattern_button, text="Load Pattern from Excel", command = lambda: import_pattern_from_excel(csv_output_directory))
+load_pattern_button = ctk.CTkButton(frame_load_pattern_button, text="Load Pattern from Excel", command = lambda: import_pattern_from_excel('B1', 'BX75'))
 load_pattern_button.grid(row=0, column=0, padx=5, pady=5)
 
 # checkbox: some checkbox
