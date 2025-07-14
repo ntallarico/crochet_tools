@@ -27,6 +27,7 @@ from PIL import Image, ImageTk, ImageEnhance
 from tkinter import messagebox
 from openpyxl import styles, Workbook, load_workbook
 from openpyxl.utils import column_index_from_string
+from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 from string import ascii_uppercase
 
 # ---------- Global Variables ----------
@@ -51,8 +52,8 @@ image_lvl0 = None # original
 image_lvl1 = None
 image_lvl2 = None
 image_lvl3 = None
-
-
+image_lvl4 = None
+image_lvl5 = None
 
 
 
@@ -165,10 +166,24 @@ def process_lvl2_to_lvl3():
     # update image_lvl3 on the UI display
     #update_image_display(image_lvl3, image_lvl3_image_label)
 
+def process_lvl4_to_lvl5():
+    global image_lvl4, image_lvl5
+    # curently does nothing
+    new_image = image_lvl4.copy()
+    # perform pixel shifting
+    new_image = pixel_shift(new_image)
+    # update image_lvl3 in memory
+    image_lvl5 = new_image
+    # update image_lvl5 on the UI display
+    update_image_display(image_lvl5, image_lvl5_image_label)
+
 def update_all_levels():
     process_lvl0_to_lvl1()
     process_lvl1_to_lvl2()
     process_lvl2_to_lvl3()
+
+def update_all_levels_tab1():
+    process_lvl4_to_lvl5()
 
 def apply_color_sliders(image):
     if image == None: return
@@ -194,6 +209,18 @@ def quantize_image(image, num_colors):
     if num_colors <= 32:
         quantized_image = image.convert("P", palette=Image.ADAPTIVE, colors=num_colors, dither=0).convert("RGB")
     return quantized_image
+
+# take an image and shift the pixels so that when the pattern is crocheted, the angle of alternating rows shifts
+# the image back into place instead of looking wrong
+def pixel_shift(image):
+    if image == None: return
+    
+    # dummy contents. implement this for real
+    print("nick implement pixel_shift()")
+    pixel_shifted_image = image.copy()
+    pixel_shifted_image = ImageEnhance.Color(pixel_shifted_image).enhance(0.5)
+    
+    return pixel_shifted_image
 
 def dimensions_valid(width, height):
 	## Check if height and width are numbers
@@ -348,15 +375,14 @@ def on_app_exit():
 def get_file_name_from_path(file_path):
 	return file_path.split("/")[-1]
 
-def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = False, include_row_numbers = True):
+def export_image_as_excel_pattern(csv_output_directory, output_file_name, image, include_pixel_numbers = False, include_row_numbers = True):
     column_size = 2.8 # this number is about 20 pixels, same as the default height
     cell_fill_type = 'solid'
     legend_buffer = 2
-    output_file_name = "output"
     wb = None
 
     try:
-        image_to_export = image_lvl3
+        image_to_export = image
 
         if image_to_export == None: return
 
@@ -379,7 +405,7 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
 
         # fill worksheet with image
         for x in range(0, len(colors)):
-            print("Processing row: " +  str(x) + "/" + str(len(colors)))
+            print("Processing row: " +  str(x+1) + "/" + str(len(colors)))
             for y in range(0, len(colors[x])):
                 cell_color = rgb_to_hex(colors[x][y])
                 font_color = get_font_color(colors[x][y])
@@ -456,7 +482,7 @@ def export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = 
 
 # Import a pattern from Excel, specifying the rectangular region by start_cell and end_cell (e.g., "B1", "BX75").
 def import_pattern_from_excel(start_cell, end_cell):
-    from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
+    global image_lvl4
 
     # Prompt user to select Excel file
     filepath = filedialog.askopenfilename(
@@ -515,12 +541,13 @@ def import_pattern_from_excel(start_cell, end_cell):
             for x in range(width):
                 img.putpixel((x, y), pixels[y][x])
 
+        # test import by replacing image_lvl0
+        image_lvl4 = img
+        update_image_display(image_lvl4, image_lvl4_image_label)
+        update_all_levels_tab1()
+
         print("Pattern imported from Excel successfully!")
         print(f"File path: '{filepath}'")
-
-        # test import by replacing image_lvl0
-        image_lvl0 = img
-        update_image_display(image_lvl0, image_lvl0_image_label)
 
         return img
 
@@ -528,8 +555,6 @@ def import_pattern_from_excel(start_cell, end_cell):
         print(f"Error importing pattern from Excel: {e}")
         return None
 
-def pixel_shift_and_export():
-    print("nick implement pixel_shift_and_export()")
 
 
 # ---------- GUI Setup ----------
@@ -544,34 +569,52 @@ app.title(window_title)
 app.grid_rowconfigure(0, weight=1) # make row 0 expandable
 app.grid_columnconfigure(0, weight=1) # make column 0 expandable
 
-# ---------- UI Frame Structure ----------
+# ---------- Tabs ----------
 
-frame_app = ctk.CTkFrame(app)
-frame_app.grid(row=0, column=0, padx=5, pady=5, sticky="nsew") # new = stick to sides: north, south, east, west
-frame_app.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_app.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+# Create main tabview
+tabview = ctk.CTkTabview(app)
+tabview.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+tabview.grid_rowconfigure(0, weight=1)
+tabview.grid_columnconfigure(0, weight=1)
+
+# Add tab 0
+tab_0 = tabview.add("Image to Pixel Grid")
+tab_0.grid_rowconfigure(0, weight=1)
+tab_0.grid_columnconfigure(0, weight=1)
+
+# Add tab 1
+tab_1 = tabview.add("Pixel Shift")
+tab_1.grid_rowconfigure(0, weight=1)
+tab_1.grid_columnconfigure(0, weight=1)
+
+# ---------- Tab 0 : UI Frame Structure ----------
+
+frame_app_tab0 = ctk.CTkFrame(tab_0)
+frame_app_tab0.grid(row=0, column=0, padx=5, pady=5, sticky="nsew") # new = stick to sides: north, south, east, west
+frame_app_tab0.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_app_tab0.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 # set columns to be expandable so they appear evenly spaced across the window
-frame_app.grid_columnconfigure(0, weight=1)
-frame_app.grid_columnconfigure(1, weight=1)
-frame_app.grid_columnconfigure(2, weight=1)
+frame_app_tab0.grid_columnconfigure(0, weight=1)
+frame_app_tab0.grid_columnconfigure(1, weight=1)
+frame_app_tab0.grid_columnconfigure(2, weight=1)
 
 # frame for column 0
-frame_col0 = ctk.CTkFrame(frame_app, fg_color="transparent")
+frame_col0 = ctk.CTkFrame(frame_app_tab0, fg_color="transparent")
 frame_col0.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 frame_col0.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 frame_col0.grid_rowconfigure(0, weight=1) # set row 0 to expandable
 
-frame_col1 = ctk.CTkFrame(frame_app, fg_color="transparent")
+frame_col1 = ctk.CTkFrame(frame_app_tab0, fg_color="transparent")
 frame_col1.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 frame_col1.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 frame_col1.grid_rowconfigure(0, weight=1) # set row 0 to expandable
 
-frame_col2 = ctk.CTkFrame(frame_app, fg_color="transparent")
+frame_col2 = ctk.CTkFrame(frame_app_tab0, fg_color="transparent")
 frame_col2.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
 frame_col2.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 frame_col2.grid_rowconfigure(0, weight=1) # set row 0 to expandable
 
-# ---------- Frame: col0 ----------
+# ---------- Tab 0 Frame: col0 ----------
 
 # image editting frame for column 0, for image lvl0 display and all associated controls
 frame_col0_image_editing = ctk.CTkFrame(frame_col0, fg_color=("gray75", "gray25"))
@@ -613,7 +656,7 @@ console_text_box.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 # redirect stdout to the console textbox
 sys.stdout = TextBoxRedirector(console_text_box)
 
-# ---------- Frame: col1 ----------
+# ---------- Tab 0 Frame: col1 ----------
 
 # image editting frame for column 1, for image lvl1 display and all associated controls
 frame_col1_image_editing = ctk.CTkFrame(frame_col1, fg_color=("gray75", "gray25"))
@@ -646,7 +689,7 @@ frame_image_value_sliders.grid(row=2, column=0, padx=5, pady=5)
 # label_dummy_preprocess1 = ctk.CTkLabel(frame_dummy_preprocess1, text="put more controls here")
 # label_dummy_preprocess1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
-# ---------- Frame: col2 ----------
+# ---------- Tab 0 Frame: col2 ----------
 
 # image editting frame for column 2, for image lvl2 display and all associated controls
 frame_col2_image_editing = ctk.CTkFrame(frame_col2, fg_color=("gray75", "gray25"))
@@ -675,22 +718,12 @@ frame_pixelate = ctk.CTkFrame(frame_col2_image_editing)
 frame_pixelate.grid(row=2, column=0, padx=5, pady=5)
 
 # frame for export to excel controls
-frame_export_to_excel = ctk.CTkFrame(frame_col1, fg_color=("gray75", "gray25"))
+frame_export_to_excel = ctk.CTkFrame(frame_col2, fg_color=("gray75", "gray25"))
 frame_export_to_excel.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 frame_export_to_excel.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_export_to_excel.grid_rowconfigure(1, weight=1) # set row 1 to expandable
 frame_export_to_excel.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-frame_export_to_excel.grid_columnconfigure(1, weight=1) # set column 1 to expandable
 
-# frame for pixel shift controls
-frame_pixel_shift = ctk.CTkFrame(frame_col2, fg_color=("gray75", "gray25"))
-frame_pixel_shift.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-frame_pixel_shift.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_pixel_shift.grid_rowconfigure(1, weight=1) # set row 1 to expandable
-frame_pixel_shift.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-frame_pixel_shift.grid_columnconfigure(1, weight=1) # set column 1 to expandable
-
-# ---------- Frame: Value Sliders ----------
+# ---------- Tab 0 Frame: Value Sliders ----------
 
 # reset sliders button
 reset_button = ctk.CTkButton(frame_image_value_sliders, text="Reset Sliders", command = lambda: reset_sliders())
@@ -720,7 +753,7 @@ brightness_slider = create_slider("Brightness", "brightness", 0)
 contrast_slider   = create_slider("Contrast", "contrast", 1)
 saturation_slider = create_slider("Saturation", "saturation", 2)
 
-# ---------- Frame: Pixelate ----------
+# ---------- Tab 0 Frame: Pixelate ----------
 
 # update button
 update_button = ctk.CTkButton(frame_pixelate, text="Update", command = lambda: update_all_levels())
@@ -744,84 +777,206 @@ width_entry = create_entry("Width (# of stitches)", "75", 0)
 height_entry = create_entry("Height (# of stitches)", "75", 1)
 colors_entry = create_entry("Number of Colors", "3", 2)
 
-# ---------- Frame: Export to Excel ----------
+# ---------- Tab 0 Frame: Export to Excel ----------
 
 # label for title
 label_step4 = ctk.CTkLabel(frame_export_to_excel, text="Step 4", font=("Arial", 24))
 label_step4.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
 
 # frame for export button
-frame_export_button = ctk.CTkFrame(frame_export_to_excel, fg_color="transparent")
-frame_export_button.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-frame_export_button.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_export_button.grid_columnconfigure(0, weight=1) # set column 0 to expandable
-
-# frame for controls
-frame_export_controls = ctk.CTkFrame(frame_export_to_excel, fg_color="transparent")
-frame_export_controls.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
-frame_export_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_export_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+frame_tab0_export_pattern = ctk.CTkFrame(frame_export_to_excel)
+frame_tab0_export_pattern.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+frame_tab0_export_pattern.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_tab0_export_pattern.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # export to excel button
-export_image_as_pattern_button = ctk.CTkButton(frame_export_button, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern(csv_output_directory, include_pixel_numbers = include_cells_var.get(), include_row_numbers = include_rownums_var.get()))
+export_image_as_pattern_button = ctk.CTkButton(frame_tab0_export_pattern, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern(csv_output_directory, "output", image_lvl3, include_pixel_numbers = include_cells_var_tab0.get(), include_row_numbers = include_rownums_var_tab0.get()))
 export_image_as_pattern_button.grid(row=0, column=0, padx=5, pady=5)
 
+# frame for controls
+frame_tab0_export_controls = ctk.CTkFrame(frame_tab0_export_pattern, fg_color="transparent")
+frame_tab0_export_controls.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+frame_tab0_export_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_tab0_export_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
 # checkbox: include cell numbers
-include_cells_var = ctk.BooleanVar()
-checkbox_color_nums = ctk.CTkCheckBox(frame_export_controls, text="Include color numbers in cells", variable=include_cells_var)
+include_cells_var_tab0 = ctk.BooleanVar()
+checkbox_color_nums = ctk.CTkCheckBox(frame_tab0_export_controls, text="Include color numbers in cells", variable=include_cells_var_tab0)
 checkbox_color_nums.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
 
 # checkbox: include row numbers
-include_rownums_var = ctk.BooleanVar(value=True)
-checkbox_include_rownums = ctk.CTkCheckBox(frame_export_controls, text="Include row numbers", variable=include_rownums_var)
+include_rownums_var_tab0 = ctk.BooleanVar()
+checkbox_include_rownums = ctk.CTkCheckBox(frame_tab0_export_controls, text="Include row numbers", variable=include_rownums_var_tab0)
 checkbox_include_rownums.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
 
-# ---------- Frame: Pixel Shift ----------
 
-# label for title
-label_step5 = ctk.CTkLabel(frame_pixel_shift, text="Step 5", font=("Arial", 24))
-label_step5.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+# ---------- Tab 1: UI Frame Structure ----------
 
-# frame for load pattern section
-frame_subsection_load_pattern = ctk.CTkFrame(frame_pixel_shift)
-frame_subsection_load_pattern.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-frame_subsection_load_pattern.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_subsection_load_pattern.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+frame_app_tab1 = ctk.CTkFrame(tab_1)
+frame_app_tab1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew") # new = stick to sides: north, south, east, west
+frame_app_tab1.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_app_tab1.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+frame_app_tab1.grid_columnconfigure(1, weight=1) # set column 1 to expandable
+frame_app_tab1.grid_columnconfigure(2, weight=1) # set column 2 to expandable
+
+# frame for column 0
+frame_tab1_col0 = ctk.CTkFrame(frame_app_tab1, fg_color="transparent")
+frame_tab1_col0.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+frame_tab1_col0.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+frame_tab1_col0.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+
+frame_tab1_col1 = ctk.CTkFrame(frame_app_tab1, fg_color="transparent")
+frame_tab1_col1.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+frame_tab1_col1.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+frame_tab1_col1.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+
+frame_tab1_col2 = ctk.CTkFrame(frame_app_tab1, fg_color="transparent")
+frame_tab1_col2.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
+frame_tab1_col2.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+frame_tab1_col2.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+
+# ---------- Tab 1 Frame: col0 ----------
+
+# image editting frame for column 0, for image lvl4 display and all associated controls
+frame_tab1_col0_image_editing = ctk.CTkFrame(frame_tab1_col0, fg_color=("gray75", "gray25"))
+frame_tab1_col0_image_editing.grid(row=0, column=0, padx=5, pady=5, sticky="new")
+frame_tab1_col0_image_editing.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
+# text label for step 5
+label_step5 = ctk.CTkLabel(frame_tab1_col0_image_editing, text="Step 5", font=("Arial", 24))
+label_step5.grid(row=0, column=0, padx=5, pady=5)
+
+# image_lvl4 frame for image
+frame_image_lvl4 = ctk.CTkFrame(frame_tab1_col0_image_editing, width=500, height=500)
+frame_image_lvl4.grid(row=1, column=0, padx=5, pady=5)
+frame_image_lvl4.grid_propagate(False)
+# make needed columns and rows expandable so things can be centered
+frame_image_lvl4.grid_columnconfigure(0, weight=1)
+frame_image_lvl4.grid_rowconfigure(0, weight=1)
+
+# image_lvl4 image label
+image_lvl4_image_label = ctk.CTkLabel(frame_image_lvl4, text="")
+image_lvl4_image_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+
+# frame for pixel shift section
+frame_load_pattern_controls = ctk.CTkFrame(frame_tab1_col0_image_editing)
+frame_load_pattern_controls.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+frame_load_pattern_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_load_pattern_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # load pattern from excel button
-load_pattern_button = ctk.CTkButton(frame_subsection_load_pattern, text="Step A: Import pattern", command = lambda: import_pattern_from_excel(excel_pattern_start_cell.get(), excel_pattern_end_cell.get()))
+load_pattern_button = ctk.CTkButton(frame_load_pattern_controls, text="Import pattern from Excel", command = lambda: import_pattern_from_excel(excel_pattern_start_cell.get(), excel_pattern_end_cell.get()))
 load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="new")
 
 def create_load_pattern_config_entry(label_text, default_text, row):
-    lbl = ctk.CTkLabel(frame_subsection_load_pattern, text=label_text)
+    lbl = ctk.CTkLabel(frame_load_pattern_controls, text=label_text)
     lbl.grid(row=row, column=0, padx=5, pady=5, sticky="w")
-    entry = ctk.CTkEntry(frame_subsection_load_pattern)
+    entry = ctk.CTkEntry(frame_load_pattern_controls)
     entry.insert(0, default_text)
     entry.grid(row=row, column=1, pady=5, padx=5)
     return entry
 
-excel_pattern_start_cell = create_load_pattern_config_entry("Pattern start (top left cell)", "B1", 1)
-excel_pattern_end_cell = create_load_pattern_config_entry("Pattern end (bottom right cell)", "BX75", 2)
+excel_pattern_start_cell = create_load_pattern_config_entry("Pattern start (top left cell)", "A1", 1)
+excel_pattern_end_cell = create_load_pattern_config_entry("Pattern end (bottom right cell)", "BW75", 2)
+
+# console frame
+frame_tab1_console = ctk.CTkFrame(frame_tab1_col0, fg_color=("gray75", "gray25"))
+frame_tab1_console.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+frame_tab1_console.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_tab1_console.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+# console text label
+console_text_label_tab1 = ctk.CTkLabel(frame_tab1_console, text="Console")
+console_text_label_tab1.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
+# console text box
+console_text_box_tab1 = ctk.CTkTextbox(frame_tab1_console, state="disabled")
+console_text_box_tab1.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+
+# redirect stdout to the console textbox
+# TODO have stdout redirect to console_text_box_tab1 as well as console_text_box 
+# sys.stdout = TextBoxRedirector(console_text_box_tab1)
+
+# ---------- Tab 1 Frame: col1 ----------
+
+# image editting frame for column 1, for image lvl5 display and all associated controls
+frame_tab1_col1_image_editing = ctk.CTkFrame(frame_tab1_col1, fg_color=("gray75", "gray25"))
+frame_tab1_col1_image_editing.grid(row=0, column=0, padx=5, pady=5, sticky="new")
+frame_tab1_col1_image_editing.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
+# text label for step 6
+label_step6 = ctk.CTkLabel(frame_tab1_col1_image_editing, text="Step 6", font=("Arial", 24))
+label_step6.grid(row=0, column=0, padx=5, pady=5)
+
+# image_lvl5 frame for image
+frame_image_lvl5 = ctk.CTkFrame(frame_tab1_col1_image_editing, width=500, height=500)
+frame_image_lvl5.grid(row=1, column=0, padx=5, pady=5)
+frame_image_lvl5.grid_propagate(False)
+# make needed columns and rows expandable so things can be centered
+frame_image_lvl5.grid_columnconfigure(0, weight=1)
+frame_image_lvl5.grid_rowconfigure(0, weight=1)
+
+# image_lvl5 image label
+image_lvl5_image_label = ctk.CTkLabel(frame_image_lvl5, text="")
+image_lvl5_image_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
 # frame for pixel shift section
-frame_subsection_pixel_shift = ctk.CTkFrame(frame_pixel_shift)
-frame_subsection_pixel_shift.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
-frame_subsection_pixel_shift.grid_rowconfigure(0, weight=1) # set row 0 to expandable
-frame_subsection_pixel_shift.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+frame_pixel_shift_controls = ctk.CTkFrame(frame_tab1_col1_image_editing)
+frame_pixel_shift_controls.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+frame_pixel_shift_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_pixel_shift_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # pixel shift button
-load_pattern_button = ctk.CTkButton(frame_subsection_pixel_shift, text="Step B: Pixel shift and export", command = lambda: pixel_shift_and_export())
+load_pattern_button = ctk.CTkButton(frame_pixel_shift_controls, text="Perform pixel shift", command = lambda: pixel_shift())
 load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="new")
 
 # checkbox: some checkbox
 include_cells_var = ctk.BooleanVar()
-checkbox_dummy = ctk.CTkCheckBox(frame_subsection_pixel_shift, text="dummy checkbox", variable=include_cells_var)
+checkbox_dummy = ctk.CTkCheckBox(frame_pixel_shift_controls, text="dummy checkbox", variable=include_cells_var)
 checkbox_dummy.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
 
 # checkbox: some checkbox
 include_rownums_var = ctk.BooleanVar()
-checkbox_dummy1 = ctk.CTkCheckBox(frame_subsection_pixel_shift, text="dummy checkbox", variable=include_rownums_var)
+checkbox_dummy1 = ctk.CTkCheckBox(frame_pixel_shift_controls, text="dummy checkbox", variable=include_rownums_var)
 checkbox_dummy1.grid(row=2, column=0, padx=5, pady=5, sticky="nsw")
+
+# ---------- Tab 1 Frame: col2 ----------
+
+# contents frame for column 1
+frame_tab1_col2_export_pattern = ctk.CTkFrame(frame_tab1_col2, fg_color=("gray75", "gray25"))
+frame_tab1_col2_export_pattern.grid(row=0, column=0, padx=5, pady=5, sticky="new")
+frame_tab1_col2_export_pattern.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_tab1_col2_export_pattern.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
+# text label for step 7
+label_step7 = ctk.CTkLabel(frame_tab1_col2_export_pattern, text="Step 7", font=("Arial", 24))
+label_step7.grid(row=0, column=0, padx=5, pady=5)
+
+# frame for export button
+frame_tab1_export_pattern = ctk.CTkFrame(frame_tab1_col2_export_pattern)
+frame_tab1_export_pattern.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+frame_tab1_export_pattern.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_tab1_export_pattern.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
+# export to excel button
+export_image_as_pattern_button = ctk.CTkButton(frame_tab1_export_pattern, text="Export Pattern to Excel", command = lambda: export_image_as_excel_pattern(csv_output_directory, "output - shifted", image_lvl5, include_pixel_numbers = include_cells_var_tab1.get(), include_row_numbers = include_rownums_var_tab1.get()))
+export_image_as_pattern_button.grid(row=0, column=0, padx=5, pady=5)
+
+# frame for controls
+frame_tab1_export_controls = ctk.CTkFrame(frame_tab1_export_pattern, fg_color="transparent")
+frame_tab1_export_controls.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+frame_tab1_export_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
+frame_tab1_export_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
+
+# checkbox: include cell numbers
+include_cells_var_tab1 = ctk.BooleanVar()
+checkbox_color_nums = ctk.CTkCheckBox(frame_tab1_export_controls, text="Include color numbers in cells", variable=include_cells_var_tab1)
+checkbox_color_nums.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
+
+# checkbox: include row numbers
+include_rownums_var_tab1 = ctk.BooleanVar(value=True)
+checkbox_include_rownums = ctk.CTkCheckBox(frame_tab1_export_controls, text="Include row numbers", variable=include_rownums_var_tab1)
+checkbox_include_rownums.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
+
+
 
 # ---------- Launch ----------
 app.mainloop()
