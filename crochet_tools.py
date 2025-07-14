@@ -234,7 +234,7 @@ def pixel_shift():
     for y in range(height):
         for x in range(width):
             pixel = pixel_shifted_image.getpixel((x, y))
-            print(f"row: {y}, col: {x}, pixel: {pixel}")
+            print(f"row: {y+1}, col: {y+1}, pixel: {pixel}")
             # proceed if y is an odd row
             if y % 2 == 1:
                 # test. set current pixel to previous pixel's value
@@ -243,9 +243,12 @@ def pixel_shift():
                     pixel_shifted_image.putpixel((x, y), prev_pixel)
             else:
                 pass
+            
             # update image_lvl5 on the UI display
             image_lvl5 = pixel_shifted_image
             update_image_display(image_lvl5, image_lvl5_image_label)
+
+    print("Pixel shift complete!")
 
     return pixel_shifted_image
 
@@ -1007,4 +1010,3 @@ checkbox_include_rownums.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
 
 # ---------- Launch ----------
 app.mainloop()
-
