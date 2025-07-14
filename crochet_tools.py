@@ -860,13 +860,13 @@ image_lvl4_image_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
 # frame for pixel shift section
 frame_load_pattern_controls = ctk.CTkFrame(frame_tab1_col0_image_editing)
-frame_load_pattern_controls.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+frame_load_pattern_controls.grid(row=2, column=0, padx=5, pady=5)
 frame_load_pattern_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
 frame_load_pattern_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # load pattern from excel button
 load_pattern_button = ctk.CTkButton(frame_load_pattern_controls, text="Import pattern from Excel", command = lambda: import_pattern_from_excel(excel_pattern_start_cell.get(), excel_pattern_end_cell.get()))
-load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="new")
+load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
 
 def create_load_pattern_config_entry(label_text, default_text, row):
     lbl = ctk.CTkLabel(frame_load_pattern_controls, text=label_text)
@@ -920,13 +920,13 @@ image_lvl5_image_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
 # frame for pixel shift section
 frame_pixel_shift_controls = ctk.CTkFrame(frame_tab1_col1_image_editing)
-frame_pixel_shift_controls.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+frame_pixel_shift_controls.grid(row=2, column=0, padx=5, pady=5)
 frame_pixel_shift_controls.grid_rowconfigure(0, weight=1) # set row 0 to expandable
 frame_pixel_shift_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # pixel shift button
 load_pattern_button = ctk.CTkButton(frame_pixel_shift_controls, text="Perform pixel shift", command = lambda: pixel_shift())
-load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="new")
+load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
 
 # checkbox: some checkbox
 include_cells_var = ctk.BooleanVar()
