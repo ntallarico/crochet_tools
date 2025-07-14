@@ -55,31 +55,34 @@ image_lvl3 = None
 image_lvl4 = None
 image_lvl5 = None
 
+# define list of console text boxes across our application so we can add them as they are created
+console_box_list = []
 
 
 # ---------- Classes ----------
 
-# custom stream class that will handle the redirection of standard and error output to the UI console
-class TextBoxRedirector(TextIOWrapper):
-    def __init__(self, textbox):
-        super().__init__(sys.stdout.buffer)
-        self.textbox = textbox
-        self._buffer = []
-        
+# custom stream class that will handle the redirection of standard and error output to a text box on the UI console.
+# handles streaming to multiple text boxes contained in a list
+class MultiTextBoxRedirector:
+    def __init__(self, textboxes):
+        self.textboxes = textboxes  # List of textboxes
+
+    def add_textbox(self, textbox):
+        if textbox not in self.textboxes:
+            self.textboxes.append(textbox)
+
     def write(self, string):
-        self._buffer.append(string)
-        self.textbox.configure(state="normal")
-        self.textbox.insert("end", string)
-        self.textbox.see("end")
-        self.textbox.update()  # force the textbox to update immediately instead of writing things to a buffer
-        
-        # keep only last 1000 lines
-        line_count = int(self.textbox.index('end-1c').split('.')[0])
-        if line_count > 1000:
-            self.textbox.delete("1.0", "2.0")
-        
-        self.textbox.configure(state="disabled")
-        
+        for textbox in self.textboxes:
+            textbox.configure(state="normal")
+            textbox.insert("end", string)
+            textbox.see("end")
+            textbox.update()
+            # keep only last 1000 lines
+            line_count = int(textbox.index('end-1c').split('.')[0])
+            if line_count > 1000:
+                textbox.delete("1.0", "2.0")
+            textbox.configure(state="disabled")
+
     def flush(self):
         pass
 
@@ -677,8 +680,9 @@ console_text_label.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
 console_text_box = ctk.CTkTextbox(frame_console, state="disabled")
 console_text_box.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 
-# redirect stdout to the console textbox
-sys.stdout = TextBoxRedirector(console_text_box)
+# add new console text box to list, then redirect stdout to all boxes in the list
+console_box_list.append(console_text_box)
+sys.stdout = MultiTextBoxRedirector(console_box_list)
 
 # ---------- Tab 0 Frame: col1 ----------
 
@@ -915,9 +919,9 @@ console_text_label_tab1.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
 console_text_box_tab1 = ctk.CTkTextbox(frame_tab1_console, state="disabled")
 console_text_box_tab1.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 
-# redirect stdout to the console textbox
-# TODO have stdout redirect to console_text_box_tab1 as well as console_text_box 
-# sys.stdout = TextBoxRedirector(console_text_box_tab1)
+# add new console text box to list, then redirect stdout to all boxes in the list
+console_box_list.append(console_text_box_tab1)
+sys.stdout = MultiTextBoxRedirector(console_box_list)
 
 # ---------- Tab 1 Frame: col1 ----------
 
@@ -999,7 +1003,6 @@ checkbox_color_nums.grid(row=0, column=0, padx=5, pady=5, sticky="nsw")
 include_rownums_var_tab1 = ctk.BooleanVar(value=True)
 checkbox_include_rownums = ctk.CTkCheckBox(frame_tab1_export_controls, text="Include row numbers", variable=include_rownums_var_tab1)
 checkbox_include_rownums.grid(row=1, column=0, padx=5, pady=5, sticky="nsw")
-
 
 
 # ---------- Launch ----------
