@@ -166,24 +166,24 @@ def process_lvl2_to_lvl3():
     # update image_lvl3 on the UI display
     #update_image_display(image_lvl3, image_lvl3_image_label)
 
-def process_lvl4_to_lvl5():
-    global image_lvl4, image_lvl5
-    # curently does nothing
-    new_image = image_lvl4.copy()
-    # perform pixel shifting
-    new_image = pixel_shift(new_image)
-    # update image_lvl3 in memory
-    image_lvl5 = new_image
-    # update image_lvl5 on the UI display
-    update_image_display(image_lvl5, image_lvl5_image_label)
+# def process_lvl4_to_lvl5():
+#     global image_lvl4, image_lvl5
+#     # curently does nothing
+#     new_image = image_lvl4.copy()
+#     # perform pixel shifting
+#     new_image = pixel_shift(new_image)
+#     # update image_lvl3 in memory
+#     image_lvl5 = new_image
+#     # update image_lvl5 on the UI display
+#     update_image_display(image_lvl5, image_lvl5_image_label)
 
 def update_all_levels():
     process_lvl0_to_lvl1()
     process_lvl1_to_lvl2()
     process_lvl2_to_lvl3()
 
-def update_all_levels_tab1():
-    process_lvl4_to_lvl5()
+# def update_all_levels_tab1():
+#     process_lvl4_to_lvl5()
 
 def apply_color_sliders(image):
     if image == None: return
@@ -214,14 +214,17 @@ def quantize_image(image, num_colors):
 take an image and shift the pixels to account for how the colors will shift when crocheting.
 the angle of alternating rows will shift the colors slightly, so we shift them here in the pattern so that crocheting shifts them back into place.
 below we list all of the rules according to which we shift pixels
-1. 
+1. only operate on odd rows
 2. 
 3. 
 4. 
 """
-def pixel_shift(image):
-    if image == None: return
-    pixel_shifted_image = image.copy()    
+def pixel_shift():
+    global image_lvl4, image_lvl5, image_lvl5_image_label
+    original_image = image_lvl4
+    
+    if original_image == None: return
+    pixel_shifted_image = original_image.copy()
     
     # iterate through rows and then cols of pixels in pixel_shifted_image
     width, height = pixel_shifted_image.size
@@ -229,87 +232,95 @@ def pixel_shift(image):
         for x in range(width):
             pixel = pixel_shifted_image.getpixel((x, y))
             print(f"row: {y}, col: {x}, pixel: {pixel}")
-            # You can add your pixel manipulation logic here if needed
-            # For now, this just iterates through all pixels
-            pass
-    
+            # proceed if y is an odd row
+            if y % 2 == 1:
+                # test. set current pixel to previous pixel's value
+                if x > 0:
+                    prev_pixel = original_image.getpixel((x - 1, y))
+                    pixel_shifted_image.putpixel((x, y), prev_pixel)
+            else:
+                pass
+            # update image_lvl5 on the UI display
+            image_lvl5 = pixel_shifted_image
+            update_image_display(image_lvl5, image_lvl5_image_label)
+
     return pixel_shifted_image
 
 def dimensions_valid(width, height):
-	## Check if height and width are numbers
-	if not width.isnumeric():
-		print("Error: Width contains non-numeric characters.")
-		messagebox.showinfo(error_box_header, "Error: Width contains non-numeric characters.")
-		return False
-	if not height.isnumeric():
-		print("Error: Height contains non-numeric characters.")
-		messagebox.showinfo(error_box_header, "Error: Height contains non-numeric characters.")
-		return False
-	## Check if height in width are within the desired range
-	width = int(width)
-	height = int(height)
-	if width < min_dimension_input or width > max_dimension_input:
-		print("Error: Width '" + str(width) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
-		messagebox.showinfo(error_box_header, "Error: Width '" + str(width) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
-		return False
-	if height < min_dimension_input or height > max_dimension_input:
-		print("Error: Height '" + str(height) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
-		messagebox.showinfo(error_box_header, "Error: Height '" + str(height) + "' not valid. Must be " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
-		return False
-	return True
+    ## Check if height and width are numbers
+    if not width.isnumeric():
+        print("Error: Width contains non-numeric characters.")
+        messagebox.showinfo(error_box_header, "Error: Width contains non-numeric characters.")
+        return False
+    if not height.isnumeric():
+        print("Error: Height contains non-numeric characters.")
+        messagebox.showinfo(error_box_header, "Error: Height contains non-numeric characters.")
+        return False
+    ## Check if height in width are within the desired range
+    width = int(width)
+    height = int(height)
+    if width < min_dimension_input or width > max_dimension_input:
+        print("Error: Width '" + str(width) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
+        messagebox.showinfo(error_box_header, "Error: Width '" + str(width) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
+        return False
+    if height < min_dimension_input or height > max_dimension_input:
+        print("Error: Height '" + str(height) + "' not valid. Must be between " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
+        messagebox.showinfo(error_box_header, "Error: Height '" + str(height) + "' not valid. Must be " + str(min_dimension_input) + " and " + str(max_dimension_input) + ".")
+        return False
+    return True
 
 def num_colors_valid(num_colors):
-	## Check if number is numeric
-	if not num_colors.isnumeric():
-		print("Error: Number of Colors contains non-numeric characters.")
-		messagebox.showinfo(error_box_header, "Error: Number of Colors contains non-numeric characters.")
-		return False
-	## Check if in desired range
-	num_colors = int(num_colors)
-	if num_colors < min_color_input or num_colors > max_color_input:
-		print("Error: Number of Colors '" + str(num_colors) + "' not valid. Must be between "  + str(min_color_input) + " and " + str(max_color_input))
-		messagebox.showinfo(error_box_header, "Error: Number of Colors '" + str(num_colors) + "' not valid. Must be between "  + str(min_color_input) + " and " + str(max_color_input))
-		return False
-	return True
+    ## Check if number is numeric
+    if not num_colors.isnumeric():
+        print("Error: Number of Colors contains non-numeric characters.")
+        messagebox.showinfo(error_box_header, "Error: Number of Colors contains non-numeric characters.")
+        return False
+    ## Check if in desired range
+    num_colors = int(num_colors)
+    if num_colors < min_color_input or num_colors > max_color_input:
+        print("Error: Number of Colors '" + str(num_colors) + "' not valid. Must be between "  + str(min_color_input) + " and " + str(max_color_input))
+        messagebox.showinfo(error_box_header, "Error: Number of Colors '" + str(num_colors) + "' not valid. Must be between "  + str(min_color_input) + " and " + str(max_color_input))
+        return False
+    return True
 
 # IN: PIL image
 # OUT: 2D array with each value containing a rgb tuple
 # OUT: 2D array with each value containing an int representing the color map value
 def get_colors(image):
-	used_colors = []
-	colors = []
-	color_map = []
+    used_colors = []
+    colors = []
+    color_map = []
 
-	for x in range(0, image.size[0]): # Left column to right column
-		column_colors = []
-		column_map = []
-		for y in range(0, image.size[1]): # Top row to bottom row
-			pixel_color = image.getpixel((x,y))
-			if(pixel_color not in used_colors):
-				used_colors.append(pixel_color)
-			pixel_map = used_colors.index(pixel_color)
+    for x in range(0, image.size[0]): # Left column to right column
+        column_colors = []
+        column_map = []
+        for y in range(0, image.size[1]): # Top row to bottom row
+            pixel_color = image.getpixel((x,y))
+            if(pixel_color not in used_colors):
+                used_colors.append(pixel_color)
+            pixel_map = used_colors.index(pixel_color)
 
-			column_colors.append(pixel_color)
-			column_map.append(pixel_map)
-		colors.append(column_colors)
-		color_map.append(column_map)
+            column_colors.append(pixel_color)
+            column_map.append(pixel_map)
+        colors.append(column_colors)
+        color_map.append(column_map)
 
-	return colors, color_map
+    return colors, color_map
 
 def get_font_color(cell_color):
-	r = cell_color[0]
-	g = cell_color[1]
-	b = cell_color[2]
-	luma = 0.299*r + 0.587*g + 0.114*b
-	luma = luma / 255.0 # Account for rgb scale being 0-255 instead of 0-1.0
-	if luma > 0.7: # Cell is very bright
-		return "00000000" # Black
-	else: # Cell is very dark
-		return "FFFFFFFF" # White
+    r = cell_color[0]
+    g = cell_color[1]
+    b = cell_color[2]
+    luma = 0.299*r + 0.587*g + 0.114*b
+    luma = luma / 255.0 # Account for rgb scale being 0-255 instead of 0-1.0
+    if luma > 0.7: # Cell is very bright
+        return "00000000" # Black
+    else: # Cell is very dark
+        return "FFFFFFFF" # White
       
 def rgb_to_hex(color):
-	# Note: Have color[3] for alpha for future expansion.
-	return '%02x%02x%02x' % (color[0], color[1], color[2])
+    # Note: Have color[3] for alpha for future expansion.
+    return '%02x%02x%02x' % (color[0], color[1], color[2])
 
 def get_cell_name(x, y):
     if x < 0:
@@ -318,39 +329,39 @@ def get_cell_name(x, y):
         return f"{get_column(x + 1)}{get_row(y)}"  # Normal cells and right side row numbers
 
 def get_column(num):
-	def divmod_excel(n):
-		a, b = divmod(n, 26)
-		if b == 0:
-			return a - 1, b + 26
-		return a, b
+    def divmod_excel(n):
+        a, b = divmod(n, 26)
+        if b == 0:
+            return a - 1, b + 26
+        return a, b
 
-	chars = []
-	while num > 0:
-		num, d = divmod_excel(num)
-		chars.append(ascii_uppercase[d - 1])
-	return ''.join(reversed(chars)).upper()
+    chars = []
+    while num > 0:
+        num, d = divmod_excel(num)
+        chars.append(ascii_uppercase[d - 1])
+    return ''.join(reversed(chars)).upper()
 
 def get_row(y):
-	return str(y + 1)
+    return str(y + 1)
 
 def get_used_color_palette(colors, color_map):
-	used_colors = []
-	used_map = []
+    used_colors = []
+    used_map = []
 
-	## Get list of used colors
-	for x in range(0, len(colors)):
-		for y in range(0, len(colors[x])):
-			color = colors[x][y]
-			color_map_value = color_map[x][y]
-			if color not in used_colors:
-				used_colors.append(color)
-				used_map.append(color_map_value)
+    ## Get list of used colors
+    for x in range(0, len(colors)):
+        for y in range(0, len(colors[x])):
+            color = colors[x][y]
+            color_map_value = color_map[x][y]
+            if color not in used_colors:
+                used_colors.append(color)
+                used_map.append(color_map_value)
 
-	return used_colors, used_map
+    return used_colors, used_map
 
 def check_output_directory():
-	if not path.isdir(csv_output_directory):
-		mkdir(csv_output_directory)
+    if not path.isdir(csv_output_directory):
+        mkdir(csv_output_directory)
 
 # DESC: Save the workbook as an excel file
 # IN: workbook, file path
@@ -386,7 +397,7 @@ def on_app_exit():
         print(f"Warning: Error during application cleanup: {str(e)}")
 
 def get_file_name_from_path(file_path):
-	return file_path.split("/")[-1]
+    return file_path.split("/")[-1]
 
 def export_image_as_excel_pattern(csv_output_directory, output_file_name, image, include_pixel_numbers = False, include_row_numbers = True):
     column_size = 2.8 # this number is about 20 pixels, same as the default height
@@ -938,7 +949,7 @@ frame_pixel_shift_controls.grid_rowconfigure(0, weight=1) # set row 0 to expanda
 frame_pixel_shift_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # pixel shift button
-load_pattern_button = ctk.CTkButton(frame_pixel_shift_controls, text="Perform pixel shift", command = lambda: update_all_levels_tab1())
+load_pattern_button = ctk.CTkButton(frame_pixel_shift_controls, text="Perform pixel shift", command = lambda: pixel_shift())
 load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
 
 # checkbox: some checkbox
