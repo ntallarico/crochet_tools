@@ -210,15 +210,28 @@ def quantize_image(image, num_colors):
         quantized_image = image.convert("P", palette=Image.ADAPTIVE, colors=num_colors, dither=0).convert("RGB")
     return quantized_image
 
-# take an image and shift the pixels so that when the pattern is crocheted, the angle of alternating rows shifts
-# the image back into place instead of looking wrong
+"""
+take an image and shift the pixels to account for how the colors will shift when crocheting.
+the angle of alternating rows will shift the colors slightly, so we shift them here in the pattern so that crocheting shifts them back into place.
+below we list all of the rules according to which we shift pixels
+1. 
+2. 
+3. 
+4. 
+"""
 def pixel_shift(image):
     if image == None: return
+    pixel_shifted_image = image.copy()    
     
-    # dummy contents. implement this for real
-    print("nick implement pixel_shift()")
-    pixel_shifted_image = image.copy()
-    pixel_shifted_image = ImageEnhance.Color(pixel_shifted_image).enhance(0.5)
+    # iterate through rows and then cols of pixels in pixel_shifted_image
+    width, height = pixel_shifted_image.size
+    for y in range(height):
+        for x in range(width):
+            pixel = pixel_shifted_image.getpixel((x, y))
+            print(f"row: {y}, col: {x}, pixel: {pixel}")
+            # You can add your pixel manipulation logic here if needed
+            # For now, this just iterates through all pixels
+            pass
     
     return pixel_shifted_image
 
@@ -544,7 +557,7 @@ def import_pattern_from_excel(start_cell, end_cell):
         # test import by replacing image_lvl0
         image_lvl4 = img
         update_image_display(image_lvl4, image_lvl4_image_label)
-        update_all_levels_tab1()
+        #update_all_levels_tab1()
 
         print("Pattern imported from Excel successfully!")
         print(f"File path: '{filepath}'")
@@ -925,7 +938,7 @@ frame_pixel_shift_controls.grid_rowconfigure(0, weight=1) # set row 0 to expanda
 frame_pixel_shift_controls.grid_columnconfigure(0, weight=1) # set column 0 to expandable
 
 # pixel shift button
-load_pattern_button = ctk.CTkButton(frame_pixel_shift_controls, text="Perform pixel shift", command = lambda: pixel_shift())
+load_pattern_button = ctk.CTkButton(frame_pixel_shift_controls, text="Perform pixel shift", command = lambda: update_all_levels_tab1())
 load_pattern_button.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
 
 # checkbox: some checkbox
